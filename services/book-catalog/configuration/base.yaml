@@ -1,0 +1,13 @@
+application:
+  port: 5000
+
+database:
+  protocol: "postgres"
+  host: "localhost"
+  username: "postgres"
+  password: "password"
+  database_name: "book_catalog"
+
+search:
+  url: "http://127.0.0.1:9200"
+  index_name: "pg.public.books"

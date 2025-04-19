@@ -1,0 +1,27 @@
+[package]
+name = "book-catalog"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sea-orm.workspace = true
+sea-orm-migration.workspace = true
+
+actix-web.workspace = true
+config.workspace = true
+secrecy.workspace = true
+serde.workspace = true
+serde-aux.workspace = true
+serde_json.workspace = true
+tracing-actix-web.workspace = true
+elasticsearch.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+
+thiserror.workspace = true
+regex.workspace = true
+
+telemetry.workspace = true
+cache.workspace = true

@@ -1,0 +1,16 @@
+[package]
+name = "cache"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+moka.workspace = true
+bb8-redis.workspace = true
+bincode.workspace = true
+serde.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

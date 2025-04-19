@@ -1,0 +1,27 @@
+{
+    "name": "es-sink-books",
+    "config": {
+        "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+        "tasks.max": "1",
+        "topics": "pg.public.books",
+        "index.name": "books",
+        "connection.url": "http://elasticsearch:9200",
+        "type.name": "_doc",
+        "key.ignore": "true",
+        "schema.ignore": "true",
+        "transforms": "extractId,selectFields",
+        "transforms.extractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+        "transforms.extractId.field": "id",
+        "transforms.selectFields.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+        "transforms.selectFields.include": "id, title",
+        "behavior.on.malformed.documents": "ignore",
+        "behavior.on.null.values": "delete",
+        "batch.size": 100,
+        "flush.timeout.ms": 5000,
+        "write.method": "upsert",
+        "errors.tolerance": "all",
+        "errors.deadletterqueue.topic.name": "dlq_books",
+        "confluent.topic.replication.factor": "1",
+        "errors.deadletterqueue.topic.replication.factor": "1"
+    }
+}
