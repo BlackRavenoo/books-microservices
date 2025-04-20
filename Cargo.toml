@@ -40,13 +40,14 @@ tracing-log = "0.2"
 tracing-actix-web = "0.7"
 elasticsearch = "8.17.0-alpha.1"
 async-trait = "0.1.0"
+reqwest = { version = "0.12.15", features = ["json"] }
 
 thiserror = "2.0.12"
 regex = "1.11.1"
 
 moka = { version = "0.12.10", features = ["future"] }
 bb8-redis = "0.21.0"
-bincode = "1"
+bincode = "2.0.1"
 
 metrics = "0.24.1"
 metrics-exporter-prometheus = "0.16.2"

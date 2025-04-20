@@ -17,6 +17,14 @@ impl Expiration {
             Expiration::Minutes(m) => Some(Duration::from_secs(60 * *m as u64))
         }
     }
+
+    pub fn get_seconds(&self) -> u64 {
+        match self {
+            Expiration::Never => u64::MAX,
+            Expiration::Seconds(s) => *s as u64,
+            Expiration::Minutes(m) => *m as u64 * 60,
+        }
+    }
 }
 
 pub struct CacheExpiry;

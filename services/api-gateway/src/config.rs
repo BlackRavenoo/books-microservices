@@ -1,20 +1,10 @@
 use serde::Deserialize;
-use secrecy::{ExposeSecret, SecretBox};
-use sea_orm::ConnectOptions;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
 #[derive(Deserialize, Debug)]
 pub struct Settings {
-    pub database: DatabaseSettings,
     pub application: ApplicationSettings,
-    pub search: SearchSettings,
-    pub redis: RedisSettings
-}
-
-#[derive(Deserialize, Debug)]
-pub struct SearchSettings {
-    pub url: String,
-    pub index_name: String
+    pub services: ServicesSettings,
 }
 
 #[derive(Deserialize, Debug)]
@@ -25,35 +15,14 @@ pub struct ApplicationSettings {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct DatabaseSettings {
-    pub protocol: String,
-    pub username: String,
-    pub password: SecretBox<String>,
-    pub host: String,
-    pub database_name: String
+pub struct ServicesSettings {
+    metadata: ServiceSettings,
+    ratings: ServiceSettings
 }
 
 #[derive(Deserialize, Debug)]
-pub struct RedisSettings {
-    pub url: String
-}
-
-impl DatabaseSettings {
-    pub fn get_options(&self) -> ConnectOptions {
-        let url = format!(
-            "{}://{}:{}@{}/{}",
-            self.protocol,
-            self.username,
-            self.password.expose_secret(),
-            self.host,
-            self.database_name
-        ); 
-        let mut options = ConnectOptions::new(url);
-
-        options.connect_lazy(true);
-
-        options
-    }
+pub struct ServiceSettings {
+    url: String
 }
 
 pub fn get_config() -> Result<Settings, config::ConfigError> {

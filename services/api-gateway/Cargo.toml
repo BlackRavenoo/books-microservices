@@ -6,3 +6,12 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+serde.workspace = true
+serde-aux.workspace = true
+config.workspace = true
+actix-web.workspace = true
+tracing-actix-web.workspace = true
+reqwest.workspace = true
+thiserror.workspace = true
+
+telemetry.workspace = true

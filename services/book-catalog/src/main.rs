@@ -1,10 +1,8 @@
-use std::net::TcpListener;
+use std::{net::TcpListener, sync::Arc};
 
+use bb8_redis::{RedisConnectionManager, bb8::Pool};
 use book_catalog::{
-    config::get_config,
-    migration::Migrator,
-    search::ElasticsearchClient,
-    startup::run,
+    config::get_config, migration::Migrator, search::ElasticsearchClient, startup::run
 };
 use sea_orm::Database;
 use sea_orm_migration::MigratorTrait;
@@ -12,7 +10,7 @@ use telemetry::{get_subscriber, init_subscriber};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let subscriber = get_subscriber("server".into(), "info".into(), std::io::stdout);
+    let subscriber = get_subscriber("book-catalog".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
 
     let config = get_config().expect("Failed to read config");
@@ -30,5 +28,14 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, db, search, config)?.await
+    let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
+        .expect("Failed to create Redis manager");
+    let redis_pool = Arc::new(
+        Pool::builder()
+            .build(redis_manager)
+            .await
+            .expect("Failed to build Redis pool"),
+    );
+
+    run(listener, db, search, redis_pool)?.await
 }
