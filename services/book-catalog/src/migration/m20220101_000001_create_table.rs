@@ -226,12 +226,64 @@ impl MigrationTrait for Migration {
                 )
                 .to_owned()
         )
+        .await?;
+
+        manager.create_index(
+            Index::create()
+                .name("idx-index-book_id")
+                .table(Chapter::Table)
+                .col(Chapter::Index)
+                .col(Chapter::BookId)
+                .unique()
+                .to_owned()
+        )
         .await
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
             .drop_table(Table::drop().table(Book::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Tag::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Genre::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Series::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Chapter::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(Author::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(BookGenre::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(BookAuthor::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(BookTag::Table).to_owned())
+            .await?;
+
+        manager
+            .drop_index(
+                Index::drop()
+                    .table(Chapter::Table)
+                    .name("idx-index-book_id")
+                    .to_owned()
+            )
             .await
     }
 }
