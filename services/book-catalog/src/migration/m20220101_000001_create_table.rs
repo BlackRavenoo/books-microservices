@@ -40,6 +40,7 @@ pub enum Chapter {
     #[sea_orm(iden = "chapters")]
     Table,
     Id,
+    Index,
     BookId,
     Name,
     Link,
@@ -92,7 +93,7 @@ impl MigrationTrait for Migration {
                 .col(pk_auto(Book::Id).integer())
                 .col(string(Book::Title).string_len(255).not_null())
                 .col(string(Book::Description).string_len(1024))
-                .col(small_integer(Book::Status).not_null().default(0))
+                .col(tiny_integer(Book::Status).not_null().default(0))
                 .col(string(Book::Cover).not_null())
                 .col(timestamp_with_time_zone(Book::CreatedAt).not_null().default(Expr::current_timestamp()))
                 .to_owned()
@@ -129,7 +130,8 @@ impl MigrationTrait for Migration {
         manager.create_table(
             Table::create()
                 .table(Chapter::Table)
-                .col(small_integer(Chapter::Id))
+                .col(big_integer(Chapter::Id))
+                .col(small_integer(Chapter::Index))
                 .col(integer(Chapter::BookId))
                 .col(string(Chapter::Name).not_null())
                 .col(string(Chapter::Link).not_null())

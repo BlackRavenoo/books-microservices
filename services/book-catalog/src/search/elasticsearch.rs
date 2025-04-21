@@ -117,6 +117,7 @@ impl ElasticsearchClient {
         Ok(())
     }
 
+    // TODO: Option fields
     pub async fn search(&self, title: &str) -> Result<IdType, Error> {
         let response = self.elasticseach
             .search(SearchParts::Index(&[&self.index]))
@@ -125,7 +126,8 @@ impl ElasticsearchClient {
                     "match": {
                         "title": title
                     }
-                }
+                },
+                "_source": ["id", "title", "cover"]
             }))
             .send()
             .await?;

@@ -28,6 +28,7 @@ sea-orm-migration = "1.1.10"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 
 actix-web = "4.10.2"
+actix-multipart = "0.7.2"
 config = "0.15.11"
 secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -49,5 +50,5 @@ moka = { version = "0.12.10", features = ["future"] }
 bb8-redis = "0.21.0"
 bincode = "2.0.1"
 
-metrics = "0.24.1"
-metrics-exporter-prometheus = "0.16.2"
+metrics = "0.24.2"
+metrics-exporter-prometheus = "0.17.0"

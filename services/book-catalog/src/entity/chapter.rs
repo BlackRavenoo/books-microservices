@@ -3,9 +3,9 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "chapters")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id: i16,
-    #[sea_orm(primary_key, auto_increment = false)]
+    #[sea_orm(primary_key)]
+    pub id: i64,
+    pub index: i16,
     pub book_id: i32,
     pub name: String,
     pub link: String,

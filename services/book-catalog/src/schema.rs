@@ -1,5 +1,8 @@
 use bincode::{Decode, Encode};
-use serde::{Deserialize, Serialize};
+use sea_orm::{DerivePartialModel, FromQueryResult};
+use serde::{Deserialize, Serialize, Serializer};
+
+use crate::entity::book::{self, BookStatus};
 
 #[derive(Serialize)]
 pub enum OrderBy {
@@ -21,6 +24,11 @@ pub struct GetBookSchema {
     pub id: i32
 }
 
+#[derive(Deserialize)]
+pub struct SearchBookSchema {
+    pub q: String
+}
+
 // Output schema
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode)]
@@ -35,10 +43,10 @@ pub struct Genre {
     pub name: String
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BookStatusWithName {
     id: i16,
-    name: String,
+    name: &'static str,
 }
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode)]
@@ -52,19 +60,20 @@ pub struct BookFullSchema {
     pub id: i32,
     pub title: String,
     pub description: String,
-    pub status: BookStatusWithName,
+    pub status: BookStatus,
     pub cover: String,
-    pub created_at: String,
     pub tags: Vec<Tag>,
     pub genres: Vec<Genre>,
     pub authors: Vec<Author>,
     pub chapters_count: i16
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "book::Entity")]
 pub struct BookSchema {
     pub id: i32,
     pub title: String,
+    #[sea_orm(from_col = "cover")]
     pub thumbnail: String,
 }
 
@@ -80,5 +89,19 @@ pub struct AuthorSchema {
 pub struct ConstantsSchema {
     pub tags: Vec<Tag>,
     pub genres: Vec<Genre>,
-    pub status: Vec<BookStatusWithName>,
+    pub status: Vec<BookStatus>,
+}
+
+impl Serialize for BookStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let status_struct = BookStatusWithName {
+            name: self.as_str(),
+            id: self.clone() as i16,
+        };
+        
+        status_struct.serialize(serializer)
+    }
 }

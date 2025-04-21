@@ -1,16 +1,33 @@
 use async_trait::async_trait;
+use bincode::{Decode, Encode};
 use sea_orm::entity::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::utils::validators::is_valid_url;
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Serialize)]
-#[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Decode, Encode)]
+#[sea_orm(rs_type = "i8", db_type = "TinyInteger")]
 pub enum BookStatus {
     Ongoing = 0,
     Completed = 1,
     Hiatus = 2,
     Cancelled = 3,
+}
+
+impl<'de> Deserialize<'de> for BookStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = i8::deserialize(deserializer)?;
+        match value {
+            0 => Ok(BookStatus::Ongoing),
+            1 => Ok(BookStatus::Completed),
+            2 => Ok(BookStatus::Hiatus),
+            3 => Ok(BookStatus::Cancelled),
+            _ => Err(serde::de::Error::custom("Invalid BookStatus value")),
+        }
+    }
 }
 
 impl BookStatus {
