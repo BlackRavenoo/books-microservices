@@ -6,16 +6,18 @@ use cache::cache::HybridCache;
 use sea_orm::DatabaseConnection;
 use tracing_actix_web::TracingLogger;
 
-use crate::{routes::v1, schema::{BookFullSchema, ConstantsSchema}, search::elasticsearch::ElasticsearchClient};
+use crate::{routes::v1, schema::{BookFullSchema, ConstantsSchema}, search::elasticsearch::ElasticsearchClient, storage::s3::S3StorageBackend};
 
 pub fn run(
     listener: TcpListener,
     db: DatabaseConnection,
     search: ElasticsearchClient,
-    redis_pool: Arc<Pool<RedisConnectionManager>>
+    redis_pool: Arc<Pool<RedisConnectionManager>>,
+    storage: S3StorageBackend
 ) -> Result<Server, std::io::Error> {
     let db = Data::new(db);
     let search = Data::new(search);
+    let storage = Data::new(storage);
 
     let constants_cache = Data::new(HybridCache::<String, ConstantsSchema>::new(
         "constants".to_string(),
@@ -36,6 +38,7 @@ pub fn run(
             .app_data(search.clone())
             .app_data(constants_cache.clone())
             .app_data(book_full_cache.clone())
+            .app_data(storage.clone())
             .route("/health", web::to(HttpResponse::Ok))
             .service(
                 web::scope("/api")

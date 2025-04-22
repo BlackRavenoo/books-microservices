@@ -7,3 +7,4 @@ pub mod schema;
 pub mod migration;
 pub mod entity;
 pub mod search;
+pub mod storage;

@@ -14,3 +14,10 @@ search:
 
 redis:
   url: redis://127.0.0.1:6379
+
+s3:
+  access_key: accesskey
+  secret_key: secretkey
+  region: us-east-1
+  endpoint: http://localhost:9000
+  name: book-catalog

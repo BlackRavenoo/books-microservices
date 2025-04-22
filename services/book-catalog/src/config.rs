@@ -8,7 +8,8 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub search: SearchSettings,
-    pub redis: RedisSettings
+    pub redis: RedisSettings,
+    pub s3: S3Settings
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,6 +37,15 @@ pub struct DatabaseSettings {
 #[derive(Deserialize, Debug)]
 pub struct RedisSettings {
     pub url: String
+}
+
+#[derive(Deserialize, Debug)]
+pub struct S3Settings {
+    pub access_key: SecretBox<String>,
+    pub secret_key: SecretBox<String>,
+    pub region: String,
+    pub endpoint: String,
+    pub name: String
 }
 
 impl DatabaseSettings {

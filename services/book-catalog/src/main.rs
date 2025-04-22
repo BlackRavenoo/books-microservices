@@ -2,7 +2,7 @@ use std::{net::TcpListener, sync::Arc};
 
 use bb8_redis::{RedisConnectionManager, bb8::Pool};
 use book_catalog::{
-    config::get_config, migration::Migrator, search::ElasticsearchClient, startup::run
+    config::get_config, migration::Migrator, search::ElasticsearchClient, startup::run, storage::s3::S3StorageBackend
 };
 use sea_orm::Database;
 use sea_orm_migration::MigratorTrait;
@@ -37,5 +37,7 @@ async fn main() -> std::io::Result<()> {
             .expect("Failed to build Redis pool"),
     );
 
-    run(listener, db, search, redis_pool)?.await
+    let storage = S3StorageBackend::new(config.s3);
+
+    run(listener, db, search, redis_pool, storage)?.await
 }
