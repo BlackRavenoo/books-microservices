@@ -10,6 +10,7 @@ pub enum Book {
     Status,
     Cover,
     CreatedAt,
+    SeriesId,
 }
 
 #[derive(DeriveIden)]
@@ -96,6 +97,7 @@ impl MigrationTrait for Migration {
                 .col(tiny_integer(Book::Status).not_null().default(0))
                 .col(string(Book::Cover).not_null())
                 .col(timestamp_with_time_zone(Book::CreatedAt).not_null().default(Expr::current_timestamp()))
+                .col(integer(Book::SeriesId))
                 .to_owned()
         )
         .await?;
