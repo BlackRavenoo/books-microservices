@@ -1,4 +1,4 @@
-use sea_orm::{ConnectionTrait, DbErr, EntityTrait};
+use sea_orm::{ColumnTrait, ConnectionTrait, DbErr, EntityTrait, QueryFilter};
 
 pub async fn insert_book_relations<C, E, I>(
     db: &C,
@@ -21,4 +21,29 @@ where
             Err(e)
         }
     }
+}
+
+pub async fn remove_book_relations<C, E, I>(
+    transaction: &C,
+    book_id: i32,
+    relation_ids: Vec<I>,
+    book_id_column: E::Column,
+    relation_id_column: E::Column,
+) -> Result<(), DbErr>
+where
+    E: EntityTrait,
+    C: ConnectionTrait,
+    I: Into<sea_orm::Value>
+{
+    if relation_ids.is_empty() {
+        return Ok(());
+    }
+    
+    E::delete_many()
+        .filter(book_id_column.eq(book_id))
+        .filter(relation_id_column.is_in(relation_ids))
+        .exec(transaction)
+        .await?;
+        
+    Ok(())
 }

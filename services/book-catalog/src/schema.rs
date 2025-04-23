@@ -49,6 +49,28 @@ pub struct CreateBookForm {
     pub fields: Json<CreateBookSchema>
 }
 
+#[derive(Deserialize)]
+pub struct UpdateBookSchema {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<BookStatus>,
+    pub cover: Option<String>,
+    pub series_id: Option<i32>,
+    pub tags_to_delete: Vec<i16>,
+    pub genres_to_delete: Vec<i16>,
+    pub authors_to_delete: Vec<i32>,
+    pub tags_to_add: Vec<i16>,
+    pub genres_to_add: Vec<i16>,
+    pub authors_to_add: Vec<i32>
+}
+
+#[derive(MultipartForm)]
+pub struct UpdateBookForm {
+    #[multipart(limit = "5MB")]
+    pub cover: Option<TempFile>,
+    pub fields: Json<UpdateBookSchema>
+}
+
 // Output schema
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode)]

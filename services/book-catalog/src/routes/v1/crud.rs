@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     entity::{
         book::{self, Entity as Book}, book_author, book_genre, book_tag
-    }, schema::{BookFullSchema, BookSchema, CreateBookForm, GetBookSchema, GetListSchema, SearchBookSchema}, search::ElasticsearchClient, storage::s3::S3StorageBackend, utils::{db::insert_book_relations, image::process_image}
+    }, schema::{BookFullSchema, BookSchema, CreateBookForm, GetBookSchema, GetListSchema, SearchBookSchema, UpdateBookForm}, search::ElasticsearchClient, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
@@ -155,7 +155,6 @@ pub async fn create_book(
     storage: web::Data<S3StorageBackend>,
     MultipartForm(form): MultipartForm<CreateBookForm>
 ) -> impl Responder {
-    let db = db.as_ref();
     let mut cover = form.cover;
     let fields = form.fields.into_inner();
     let storage_id = StorageId::Cover as u32;
@@ -246,27 +245,194 @@ pub async fn create_book(
 
     match storage.save(storage_id, id, image).await {
         Ok(_) => (),
-        Err(e) => {
-            tracing::error!("Failed to save image: {:?}", e);
+        Err(_) => {
             return HttpResponse::InternalServerError().finish()
         }
     };
 
     match transaction.commit().await {
-        Ok(_) => (),
+        Ok(_) => HttpResponse::Ok().body("Book created!"),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
+}
+
+pub async fn update_book(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    book_id: web::Path<i32>,
+    MultipartForm(form): MultipartForm<UpdateBookForm>
+) -> impl Responder {
+    let cover = form.cover;
+    let book_id = book_id.into_inner();
+    let fields = form.fields.into_inner();
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    let book = match book::Entity::find_by_id(book_id)
+        .one(&transaction)
+        .await {
+            Ok(Some(b)) => b,
+            Ok(None) => {
+                return HttpResponse::NotFound().body("Book not found");
+            },
+            Err(e) => {
+                tracing::error!("Failed to find book: {:?}", e);
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+
+    let cover_id = match storage.extract_uuid_from_url(&book.cover) {
+        Some(uuid) => uuid,
+        None => {
+            tracing::error!("Failed to get uuid from url.");
             return HttpResponse::InternalServerError().finish()
         },
     };
 
-    HttpResponse::Ok().body("Book created!")
-}
+    let mut book_active: book::ActiveModel = book.into();
 
-pub async fn update_book(db: web::Data<DatabaseConnection>, ) -> impl Responder {
-    todo!();
+    if let Some(title) = fields.title {
+        book_active.title = Set(title);
+    }
+    
+    if let Some(description) = fields.description {
+        book_active.description = Set(description);
+    }
+    
+    if let Some(status) = fields.status {
+        book_active.status = Set(status);
+    }
+    
+    if let Some(series_id) = fields.series_id {
+        book_active.series_id = Set(Some(series_id));
+    }
 
-    HttpResponse::Ok().body("Book updated!")
+    if let Some(mut cover) = cover {
+        let mut buf = Vec::new();
+
+        if let Err(e) = cover.file.read_to_end(&mut buf) {
+            tracing::error!("Failed to read uploaded cover file: {:?}", e);
+            return HttpResponse::BadRequest().body("Could not read uploaded file");
+        }
+
+        let image = match process_image(&buf, 375) {
+            Ok(image) => image,
+            Err(e) => {
+                tracing::error!("Failed to process image: {:?}", e);
+                return HttpResponse::BadRequest().body("Could not process uploaded image")
+            },
+        };
+
+        if storage.save(StorageId::Cover as u32, cover_id, image).await.is_err() {
+            return HttpResponse::InternalServerError().finish()
+        };
+    }
+
+    if let Err(e) = book_active.update(&transaction).await {
+        tracing::error!("Failed to update book: {:?}", e);
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    if !fields.tags_to_add.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_tag::Entity, _>(
+            &transaction,
+            book_id,
+            fields.tags_to_add,
+            |book_id, tag_id| book_tag::ActiveModel {
+                book_id: Set(book_id),
+                tag_id: Set(tag_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_tags: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if !fields.tags_to_delete.is_empty() {
+        if let Err(e) = remove_book_relations::<_, book_tag::Entity, _>(
+            &transaction,
+            book_id,
+            fields.tags_to_delete,
+            book_tag::Column::BookId,
+            book_tag::Column::TagId
+        ).await {
+            tracing::error!("Failed to remove books_tags: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if !fields.genres_to_add.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_genre::Entity, _>(
+            &transaction,
+            book_id,
+            fields.genres_to_add,
+            |book_id, genre_id| book_genre::ActiveModel {
+                book_id: Set(book_id),
+                genre_id: Set(genre_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_genres: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if !fields.genres_to_delete.is_empty() {
+        if let Err(e) = remove_book_relations::<_, book_genre::Entity, _>(
+            &transaction,
+            book_id,
+            fields.genres_to_delete,
+            book_genre::Column::BookId,
+            book_genre::Column::GenreId
+        ).await {
+            tracing::error!("Failed to remove books_genres: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if !fields.authors_to_add.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_author::Entity, _>(
+            &transaction,
+            book_id,
+            fields.authors_to_add,
+            |book_id, author_id| book_author::ActiveModel {
+                book_id: Set(book_id),
+                author_id: Set(author_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_author: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if !fields.authors_to_delete.is_empty() {
+        if let Err(e) = remove_book_relations::<_, book_author::Entity, _>(
+            &transaction,
+            book_id,
+            fields.authors_to_delete,
+            book_author::Column::BookId,
+            book_author::Column::AuthorId
+        ).await {
+            tracing::error!("Failed to remove books_authors: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    match transaction.commit().await {
+        Ok(_) => HttpResponse::Ok().body("Book updated!"),
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
 }
 
 pub async fn search_books(search: ElasticsearchClient, query: web::Query<SearchBookSchema>) -> impl Responder {

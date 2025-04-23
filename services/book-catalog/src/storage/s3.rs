@@ -82,6 +82,17 @@ impl S3StorageBackend {
         Ok(())
     }
 
+    pub fn extract_uuid_from_url(&self, url: &str) -> Option<Uuid> {
+        if let Some(last_part) = url.split('/').last() {
+            if let Some(uuid_str) = last_part.split('.').next() {
+                if let Ok(uuid) = Uuid::parse_str(uuid_str) {
+                    return Some(uuid);
+                }
+            }
+        }
+        None
+    }
+
     pub fn get_url(
         &self,
         id: u32,
