@@ -1,3 +1,4 @@
+use actix_multipart::form::{json::Json, tempfile::TempFile, MultipartForm};
 use bincode::{Decode, Encode};
 use sea_orm::{DerivePartialModel, FromQueryResult};
 use serde::{Deserialize, Serialize, Serializer};
@@ -27,6 +28,25 @@ pub struct GetBookSchema {
 #[derive(Deserialize)]
 pub struct SearchBookSchema {
     pub q: String
+}
+
+#[derive(Deserialize)]
+pub struct CreateBookSchema {
+    pub title: String,
+    pub description: String,
+    pub status: BookStatus,
+    pub cover: String,
+    pub series_id: Option<i32>,
+    pub tags: Vec<i16>,
+    pub genres: Vec<i16>,
+    pub authors: Vec<i32>,
+}
+
+#[derive(MultipartForm)]
+pub struct CreateBookForm {
+    #[multipart(limit = "5MB")]
+    pub cover: TempFile,
+    pub fields: Json<CreateBookSchema>
 }
 
 // Output schema

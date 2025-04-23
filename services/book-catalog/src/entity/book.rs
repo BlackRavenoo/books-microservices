@@ -56,7 +56,7 @@ pub struct Model {
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTimeWithTimeZone,
     #[sea_orm(nullable)]
-    pub series_id: i32
+    pub series_id: Option<i32>
 }
 
 #[derive(Debug, EnumIter, DeriveRelation)]

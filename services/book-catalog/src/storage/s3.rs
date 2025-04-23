@@ -1,4 +1,3 @@
-use anyhow::Ok;
 use s3::{creds::Credentials, Bucket};
 use secrecy::ExposeSecret;
 use uuid::Uuid;
@@ -41,10 +40,10 @@ impl S3StorageBackend {
         id: u32,
         image_id: Uuid,
         data: Vec<u8>
-    ) -> anyhow::Result<String> {
+    ) -> anyhow::Result<()> {
         let key = self.generate_key(id, image_id);
         
-        let content_type = "application/octet-stream".to_string();
+        let content_type = "image/jpeg".to_string();
         
         let data = self.bucket
             .put_object_with_content_type(&key, &data, &content_type)
@@ -58,13 +57,7 @@ impl S3StorageBackend {
             return Err(anyhow::anyhow!(msg));
         }
 
-        Ok(
-            format!(
-            "{}/{}",
-            self.bucket.url(),
-            &key
-            )
-        )
+        Ok(())
     }
 
     pub async fn delete(
@@ -88,4 +81,16 @@ impl S3StorageBackend {
 
         Ok(())
     }
+
+    pub fn get_url(
+        &self,
+        id: u32,
+        image_id: Uuid
+    ) -> String {
+        format!(
+            "{}/{}",
+            self.bucket.url(),
+            self.generate_key(id, image_id)
+        )
+    }  
 }

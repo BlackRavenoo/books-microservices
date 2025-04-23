@@ -1,15 +1,22 @@
-use actix_multipart::Multipart;
+use std::io::Read;
+
+use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
-use sea_orm::{prelude::Expr, DatabaseConnection, EntityTrait, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
+use uuid::Uuid;
 
 use crate::{
     entity::{
         book::{self, Entity as Book}, book_author, book_genre, book_tag
-    },
-    schema::{BookFullSchema, BookSchema, GetBookSchema, GetListSchema, SearchBookSchema}, search::ElasticsearchClient
+    }, schema::{BookFullSchema, BookSchema, CreateBookForm, GetBookSchema, GetListSchema, SearchBookSchema}, search::ElasticsearchClient, storage::s3::S3StorageBackend, utils::{db::insert_book_relations, image::process_image}
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
+
+pub enum StorageId {
+    Cover = 0,
+    Avatar = 1
+}
 
 // TODO: add custom order_by and custom fields
 pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetListSchema>) -> impl Responder {
@@ -143,8 +150,115 @@ pub async fn get_book(db: web::Data<DatabaseConnection>, query: web::Query<GetBo
     }
 }
 
-pub async fn create_book(db: web::Data<DatabaseConnection>, mut payload: Multipart) -> impl Responder {
-    todo!();
+pub async fn create_book(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    MultipartForm(form): MultipartForm<CreateBookForm>
+) -> impl Responder {
+    let db = db.as_ref();
+    let mut cover = form.cover;
+    let fields = form.fields.into_inner();
+    let storage_id = StorageId::Cover as u32;
+
+    let mut buf = Vec::new();
+
+    if let Err(e) = cover.file.read_to_end(&mut buf) {
+        tracing::error!("Failed to read uploaded cover file: {:?}", e);
+        return HttpResponse::BadRequest().body("Could not read uploaded file");
+    }
+
+    let image = match process_image(&buf, 375) {
+        Ok(image) => image,
+        Err(e) => {
+            tracing::error!("Failed to process image: {:?}", e);
+            return HttpResponse::BadRequest().body("Could not process uploaded image")
+        },
+    };
+
+    let id = Uuid::new_v4();
+
+    let url = storage.get_url(storage_id, id);
+
+    let book = book::ActiveModel {
+        title: Set(fields.title),
+        description: Set(fields.description),
+        status: Set(fields.status),
+        cover: Set(url),
+        series_id: Set(fields.series_id),
+        ..Default::default()
+    };
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    let book_id = match book.insert(&transaction).await {
+        Ok(model) => model.id,
+        Err(e) => {
+            tracing::error!("Failed to insert book: {:?}", e);
+            let _ = storage.delete(storage_id, id).await;
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    if let Err(e) = insert_book_relations::<_, book_tag::Entity, _>(
+        &transaction,
+        book_id,
+        fields.tags,
+        |book_id, tag_id| book_tag::ActiveModel {
+            book_id: Set(book_id),
+            tag_id: Set(tag_id),
+        }
+    ).await {
+        tracing::error!("Failed to insert books_tags: {:?}", e);
+        return HttpResponse::InternalServerError().finish()
+    }
+
+    if let Err(e) = insert_book_relations::<_, book_genre::Entity, _>(
+        &transaction,
+        book_id,
+        fields.genres,
+        |book_id, genre_id| book_genre::ActiveModel {
+            book_id: Set(book_id),
+            genre_id: Set(genre_id),
+        }
+    ).await {
+        tracing::error!("Failed to insert books_genres: {:?}", e);
+        return HttpResponse::InternalServerError().finish()
+    }
+
+    if let Err(e) = insert_book_relations::<_, book_author::Entity, _>(
+        &transaction,
+        book_id,
+        fields.authors,
+        |book_id, author_id| book_author::ActiveModel {
+            book_id: Set(book_id),
+            author_id: Set(author_id),
+        }
+    ).await {
+        tracing::error!("Failed to insert books_authors: {:?}", e);
+        return HttpResponse::InternalServerError().finish()
+    }
+
+    match storage.save(storage_id, id, image).await {
+        Ok(_) => (),
+        Err(e) => {
+            tracing::error!("Failed to save image: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    };
+
+    match transaction.commit().await {
+        Ok(_) => (),
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        },
+    };
 
     HttpResponse::Ok().body("Book created!")
 }
@@ -162,7 +276,6 @@ pub async fn search_books(search: ElasticsearchClient, query: web::Query<SearchB
         Ok(data) => HttpResponse::Ok().json(data),
         Err(e) => {
             tracing::error!("Failed to search book: {:?}", e);
-            // TODO: more errors
             HttpResponse::BadRequest().finish()
         },
     }
