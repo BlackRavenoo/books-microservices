@@ -87,8 +87,8 @@ pub struct Genre {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct BookStatusWithName {
-    id: i16,
-    name: &'static str,
+    pub id: i16,
+    pub name: &'static str,
 }
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode)]
@@ -116,6 +116,7 @@ pub struct BookSchema {
     pub id: i32,
     pub title: String,
     #[sea_orm(from_col = "cover")]
+    #[serde(rename(deserialize = "cover"))]
     pub thumbnail: String,
 }
 

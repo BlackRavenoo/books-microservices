@@ -67,7 +67,7 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
     HttpResponse::Ok().json(books)
 }
 
-pub async fn get_book(db: web::Data<DatabaseConnection>, query: web::Query<GetBookSchema>) -> impl Responder {
+pub async fn get_book(db: web::Data<DatabaseConnection>, query: web::Path<GetBookSchema>) -> impl Responder {
     let result = Book::find_by_id(query.id)
         .select_only()
         .columns([
@@ -435,7 +435,7 @@ pub async fn update_book(
     }
 }
 
-pub async fn search_books(search: ElasticsearchClient, query: web::Query<SearchBookSchema>) -> impl Responder {
+pub async fn search_books(search: web::Data<ElasticsearchClient>, query: web::Query<SearchBookSchema>) -> impl Responder {
     let result = search.search(&query.q).await;
 
     match result {
