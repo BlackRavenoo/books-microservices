@@ -89,6 +89,15 @@ impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager.create_table(
             Table::create()
+                .table(Series::Table)
+                .col(pk_auto(Series::Id).integer())
+                .col(string(Series::Name).not_null())
+                .to_owned()
+        )
+        .await?;
+
+        manager.create_table(
+            Table::create()
                 .table(Book::Table)
                 .if_not_exists()
                 .col(pk_auto(Book::Id).integer())
@@ -97,7 +106,13 @@ impl MigrationTrait for Migration {
                 .col(tiny_integer(Book::Status).not_null().default(0))
                 .col(string(Book::Cover).not_null())
                 .col(timestamp_with_time_zone(Book::CreatedAt).not_null().default(Expr::current_timestamp()))
-                .col(integer(Book::SeriesId))
+                .col(integer_null(Book::SeriesId))
+                .foreign_key(
+                    ForeignKey::create()
+                        .from(Book::Table, Book::SeriesId)
+                        .to(Series::Table, Series::Id)
+                        .on_delete(ForeignKeyAction::SetNull)
+                )
                 .to_owned()
         )
         .await?;
@@ -116,15 +131,6 @@ impl MigrationTrait for Migration {
                 .table(Genre::Table)
                 .col(pk_auto(Genre::Id).small_integer())
                 .col(string(Genre::Name).string_len(64).not_null())
-                .to_owned()
-        )
-        .await?;
-
-        manager.create_table(
-            Table::create()
-                .table(Series::Table)
-                .col(pk_auto(Series::Id).integer())
-                .col(string(Series::Name).not_null())
                 .to_owned()
         )
         .await?;
