@@ -1,0 +1,7 @@
+-- Add migration script here
+CREATE TABLE users (
+    id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    email VARCHAR(128) NOT NULL UNIQUE,
+    password_hash VARCHAR(256) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

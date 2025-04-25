@@ -167,7 +167,6 @@ impl ElasticsearchClient {
                     
                     for hit in hits_array {
                         if let Some(source) = hit.get("_source") {
-                            println!("{:?}", source);
                             if let Ok(book) = serde_json::from_value(source.clone()) {
                                 results.push(book);
                             }

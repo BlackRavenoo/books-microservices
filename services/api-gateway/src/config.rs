@@ -16,7 +16,7 @@ pub struct ApplicationSettings {
 
 #[derive(Deserialize, Debug)]
 pub struct ServicesSettings {
-    metadata: ServiceSettings,
+    book_catalog: ServiceSettings,
     ratings: ServiceSettings
 }
 

@@ -2,7 +2,7 @@ application:
   port: 5000
 
 services:
-  metadata:
+  book_catalog:
     url: "http://book-catalog:8080"
 
   ratings:

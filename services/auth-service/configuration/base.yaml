@@ -1,0 +1,17 @@
+application:
+  port: 5000
+
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "password"
+  database_name: "auth_service"
+
+auth:
+  access_token_lifetime: 15m
+  refresh_token_lifetime: 30d
+  private_key_path: ./keys/private.pem
+  public_key_path: ./keys/public.pem
+  secret: somesecretkey
+  issuer: auth-service
