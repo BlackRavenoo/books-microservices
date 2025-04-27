@@ -1,4 +1,4 @@
-use std::{fmt::Display, hash::Hash, sync::Arc};
+use std::{fmt::Display, hash::Hash};
 
 use bb8_redis::{bb8::{Pool, PooledConnection, RunError}, redis::{AsyncCommands, FromRedisValue, RedisError, ToRedisArgs}, RedisConnectionManager};
 use bincode::{config::Configuration, Decode, Encode};
@@ -25,7 +25,7 @@ pub enum CacheError {
 pub struct HybridCache<K, V> {
     prefix: String,
     local_cache: Cache<K, (Expiration, V)>,
-    redis_pool: Arc<Pool<RedisConnectionManager>>
+    redis_pool: Pool<RedisConnectionManager>
 }
 
 impl<K, V> HybridCache<K, V> 
@@ -33,7 +33,7 @@ where
     K: AsRef<str> + FromRedisValue + Display + ToRedisArgs + Clone + Eq + Hash + Send + Sync + 'static,
     V: Clone + Serialize + for<'de> Deserialize<'de> + Decode<()> + Encode + Send + Sync + 'static,
 {
-    pub fn new(prefix: String, redis_pool: Arc<Pool<RedisConnectionManager>>, capacity: u64) -> Self {
+    pub fn new(prefix: String, redis_pool: Pool<RedisConnectionManager>, capacity: u64) -> Self {
         let local_cache = CacheBuilder::new(capacity)
             .expire_after(CacheExpiry)
             .build();

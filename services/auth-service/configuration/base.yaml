@@ -13,5 +13,4 @@ auth:
   refresh_token_lifetime: 30d
   private_key_path: ./keys/private.pem
   public_key_path: ./keys/public.pem
-  secret: somesecretkey
   issuer: auth-service

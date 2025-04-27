@@ -1,4 +1,4 @@
-use std::{net::TcpListener, sync::Arc};
+use std::net::TcpListener;
 
 use bb8_redis::{RedisConnectionManager, bb8::Pool};
 use book_catalog::{
@@ -30,12 +30,10 @@ async fn main() -> std::io::Result<()> {
 
     let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
         .expect("Failed to create Redis manager");
-    let redis_pool = Arc::new(
-        Pool::builder()
+    let redis_pool = Pool::builder()
             .build(redis_manager)
             .await
-            .expect("Failed to build Redis pool"),
-    );
+            .expect("Failed to build Redis pool");
 
     let storage = S3StorageBackend::new(config.s3);
 

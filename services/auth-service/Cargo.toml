@@ -7,10 +7,12 @@ license.workspace = true
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
 serde-aux.workspace = true
 config.workspace = true
 actix-web.workspace = true
 actix-web-httpauth.workspace = true
+actix-session.workspace = true
 tracing-actix-web.workspace = true
 reqwest.workspace = true
 thiserror.workspace = true
@@ -24,5 +26,11 @@ base64.workspace = true
 tracing.workspace = true
 sqlx.workspace = true
 secrecy.workspace = true
+argon2.workspace = true
+bb8-redis.workspace = true
+bincode.workspace = true
+time.workspace = true
+urlencoding.workspace = true
 
 telemetry.workspace = true
+cache.workspace = true

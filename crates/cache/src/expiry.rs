@@ -6,7 +6,8 @@ use moka::Expiry;
 pub enum Expiration {
     Never,
     Seconds(u16),
-    Minutes(u8)
+    Minutes(u8),
+    Days(u8),
 }
 
 impl Expiration {
@@ -14,7 +15,8 @@ impl Expiration {
         match self {
             Expiration::Never => None,
             Expiration::Seconds(s) => Some(Duration::from_secs(*s as u64)),
-            Expiration::Minutes(m) => Some(Duration::from_secs(60 * *m as u64))
+            Expiration::Minutes(m) => Some(Duration::from_secs(60 * *m as u64)),
+            Expiration::Days(d) => Some(Duration::from_secs(*d as u64 * 60 * 60 * 24))
         }
     }
 
@@ -23,6 +25,7 @@ impl Expiration {
             Expiration::Never => u64::MAX,
             Expiration::Seconds(s) => *s as u64,
             Expiration::Minutes(m) => *m as u64 * 60,
+            Expiration::Days(d) => *d as u64 * 60 * 60 * 24,
         }
     }
 }

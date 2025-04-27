@@ -1,4 +1,4 @@
-use std::{net::TcpListener, sync::Arc};
+use std::net::TcpListener;
 
 use actix_web::{dev::Server, web::{self, Data}, App, HttpResponse, HttpServer};
 use bb8_redis::{bb8::Pool, RedisConnectionManager};
@@ -12,7 +12,7 @@ pub fn run(
     listener: TcpListener,
     db: DatabaseConnection,
     search: ElasticsearchClient,
-    redis_pool: Arc<Pool<RedisConnectionManager>>,
+    redis_pool: Pool<RedisConnectionManager>,
     storage: S3StorageBackend
 ) -> Result<Server, std::io::Error> {
     let db = Data::new(db);
@@ -21,13 +21,13 @@ pub fn run(
 
     let constants_cache = Data::new(HybridCache::<String, ConstantsSchema>::new(
         "constants".to_string(),
-        Arc::clone(&redis_pool),
+        redis_pool.clone(),
         1,
     ));
     
     let book_full_cache = Data::new(HybridCache::<String, BookFullSchema>::new(
         "book-full".to_string(),
-        Arc::clone(&redis_pool),
+        redis_pool,
         50000,
     ));
 

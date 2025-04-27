@@ -9,7 +9,9 @@ use sqlx::{postgres::{PgConnectOptions, PgSslMode}, ConnectOptions};
 pub struct Settings {
     pub application: ApplicationSettings,
     pub database: DatabaseSettings,
+    pub redis: RedisSettings,
     pub auth: AuthSettings,
+    pub session: SessionSettings,
 }
 
 #[derive(Deserialize, Debug)]
@@ -17,6 +19,16 @@ pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct RedisSettings {
+    pub url: String
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SessionSettings {
+    pub secret_key: Option<SecretBox<String>>,
 }
 
 #[derive(Deserialize, Debug)]

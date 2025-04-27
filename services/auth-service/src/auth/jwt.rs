@@ -14,15 +14,15 @@ pub struct Claims {
     pub exp: i64,
     pub iss: String,
     pub jti: String,
-    pub scope: String
+    pub scope: String,
+    pub roles: Vec<String>
 }
 
 pub struct JwtService {
     encoding_key: EncodingKey,
     decoding_key: DecodingKey,
     issuer: String,
-    access_token_lifetime: Duration,
-    refresh_token_lifetime: Duration,
+    pub access_token_lifetime: Duration,
 }
 
 impl JwtService {
@@ -36,7 +36,6 @@ impl JwtService {
             decoding_key: DecodingKey::from_rsa_pem(&public_key)?,
             issuer: auth_settings.issuer.clone(),
             access_token_lifetime: Duration::from_std(auth_settings.access_token_lifetime)?,
-            refresh_token_lifetime: Duration::from_std(auth_settings.refresh_token_lifetime)?,
         })
     }
 
@@ -44,6 +43,7 @@ impl JwtService {
         &self,
         user_id: i32,
         scope: &str,
+        roles: Vec<String>,
     ) -> anyhow::Result<String> {
         let now = Utc::now();
         let expiry = now + self.access_token_lifetime;
@@ -55,17 +55,12 @@ impl JwtService {
             iss: self.issuer.clone(),
             jti: Uuid::new_v4().to_string(),
             scope: scope.to_string(),
+            roles
         };
 
         let header = Header::new(Algorithm::RS256);
         
         Ok(jsonwebtoken::encode(&header, &claims, &self.encoding_key)?)
-    }
-
-    pub fn create_refresh_token(
-        &self
-    ) -> String {
-        Uuid::new_v4().to_string()
     }
 
     pub fn validate_token(&self, token: &str) -> Result<Claims, &'static str> {
