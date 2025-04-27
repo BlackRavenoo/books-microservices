@@ -35,7 +35,10 @@ pub async fn authorize(
     let client = match client_store.get_client(&query.client_id).await {
         Ok(Some(client)) => client,
         Ok(None) => {
-            return HttpResponse::BadRequest().body("Client not found");
+            return HttpResponse::BadRequest().json(ErrorResponse {
+                error: "invalid_client",
+                error_description: "Client not found",
+            });
         },
         Err(e) => {
             tracing::error!("Failed to fetch client: {:?}", e);
@@ -44,7 +47,10 @@ pub async fn authorize(
     };
 
     if !client.redirect_uris.contains(&query.redirect_uri) {
-        return HttpResponse::BadRequest().body("Invalid redirect_uri");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "invalid_request",
+            error_description: "Invalid redirect_uri",
+        });
     }
 
     let user_id: Option<i32> = session.get("user_id").unwrap_or(None);
@@ -94,7 +100,10 @@ pub async fn exchange_token(
     let req = req.into_inner();
 
     if req.grant_type != "authorization_code" {
-        return HttpResponse::BadRequest().body("grant_type must be 'authorization_code'");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "unsupported_grant_type",
+            error_description: "grant_type must be 'authorization_code'",
+        });
     }
     
     let client_exists = match client_store.client_exists(&req.client_id).await {
@@ -106,23 +115,35 @@ pub async fn exchange_token(
     };
     
     if !client_exists {
-        return HttpResponse::BadRequest().body("Client not found");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "invalid_client",
+            error_description: "Client not found",
+        });
     }
     
     let auth_code = match code_store.consume_code(&req.code).await {
         Ok(code) => code,
         Err(e) => {
             tracing::warn!("Failed to consume authorization code: {:?}", e);
-            return HttpResponse::BadRequest().body("Invalid or expired authorization code");
+            return HttpResponse::BadRequest().json(ErrorResponse {
+                error: "invalid_grant",
+                error_description: "Invalid or expired authorization code",
+            });
         }
     };
     
     if auth_code.client_id != req.client_id {
-        return HttpResponse::BadRequest().body("client_id mismatch");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "invalid_grant",
+            error_description: "client_id mismatch",
+        });
     }
     
     if auth_code.redirect_uri != req.redirect_uri {
-        return HttpResponse::BadRequest().body("redirect_uri mismatch");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "invalid_grant",
+            error_description: "redirect_uri mismatch",
+        });
     }
     
     if let Err(err) = pkce::verify_code_challenge(
@@ -131,7 +152,10 @@ pub async fn exchange_token(
         &auth_code.code_challenge_method
     ) {
         tracing::warn!("PKCE verification failed: {:?}", err);
-        return HttpResponse::BadRequest().body("Verification failed");
+        return HttpResponse::BadRequest().json(ErrorResponse {
+            error: "invalid_grant",
+            error_description: "PKCE verification failed",
+        });
     }
 
     let roles = match user_service.get_user_roles(auth_code.user_id).await {

@@ -87,7 +87,7 @@ impl TokenStore {
         Ok(())
     }
 
-    pub async fn revoke_access_token(&self, token: &str) -> Result<()> {
+    pub async fn revoke_access_token(&self, token: &str) -> anyhow::Result<()> {
         let mut conn = self.redis_pool.get().await.context("Failed to get Redis connection")?;
         
         conn.set_ex::<_, _, ()>(
