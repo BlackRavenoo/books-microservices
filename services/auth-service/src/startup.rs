@@ -5,7 +5,7 @@ use actix_web::{cookie::Key, dev::Server, web, App, HttpResponse, HttpServer};
 use secrecy::ExposeSecret;
 use tracing_actix_web::TracingLogger;
 
-use crate::{auth::{code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::Settings, routes::oauth::configure_routes, services::user::UserService, utils::session_middleware};
+use crate::{auth::{code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::Settings, routes::{auth, oauth}, services::user::UserService, utils::session_middleware};
 
 
 pub fn run(
@@ -37,7 +37,8 @@ pub fn run(
             .app_data(code_store.clone())
             .app_data(user_service.clone())
             .route("/health", web::to(HttpResponse::Ok))
-            .configure(configure_routes)
+            .configure(auth::configure_routes)
+            .configure(oauth::configure_routes)
     })
     .listen(listener)?
     .run();

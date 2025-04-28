@@ -130,11 +130,11 @@ pub async fn success_page() -> HttpResponse {
 }
 
 
-pub fn configure() -> impl FnOnce(&mut web::ServiceConfig) {
-    |config| {
-        config
-            .route("/auth/login", web::post().to(login))
-            .route("/auth/register", web::post().to(register))
-            .route("/auth/success", web::get().to(success_page));
-    }
+pub fn configure_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/auth")
+            .route("/login", web::post().to(login))
+            .route("/register", web::post().to(register))
+            .route("/success", web::get().to(success_page))
+    );
 }
