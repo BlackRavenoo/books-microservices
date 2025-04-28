@@ -1,4 +1,4 @@
-use auth_service::{auth::{jwt::JwtService, token_store::TokenStore}, config::get_config};
+use auth_service::{auth::{code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::get_config, services::user::UserService};
 use sqlx::postgres::PgPoolOptions;
 use telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
@@ -40,7 +40,11 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to connect to Redis");
 
-    let store = TokenStore::new(redis_pool);
+    let token_store = TokenStore::new(redis_pool);
 
-    run(listener, jwt_service, connection_pool, store, redis_store, config)?.await
+    let code_store = CodeStore::new(redis_pool);
+
+    let user_service = UserService::new(connection_pool);
+
+    run(listener, jwt_service, token_store, code_store, user_service, redis_store, config)?.await
 }

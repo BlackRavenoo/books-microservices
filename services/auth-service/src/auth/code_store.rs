@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use chrono::Utc;
 use uuid::Uuid;
 use anyhow::{Result, anyhow, Context};
@@ -11,13 +10,13 @@ use serde_json;
 use crate::schema::AuthCode;
 
 pub struct CodeStore {
-    redis_pool: Arc<Pool<RedisConnectionManager>>,
+    redis_pool: Pool<RedisConnectionManager>,
     code_expiry_seconds: u64,
     key_prefix: String,
 }
 
 impl CodeStore {
-    pub fn new(redis_pool: Arc<Pool<RedisConnectionManager>>) -> Self {
+    pub fn new(redis_pool: Pool<RedisConnectionManager>) -> Self {
         // TODO: from_config
         let code_expiry_seconds = 10 * 60;
         
