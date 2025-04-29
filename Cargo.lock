@@ -454,6 +454,7 @@ dependencies = [
  "serde-aux",
  "telemetry",
  "thiserror 2.0.12",
+ "tracing",
  "tracing-actix-web",
 ]
 

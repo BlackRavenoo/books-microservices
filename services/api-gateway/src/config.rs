@@ -16,13 +16,13 @@ pub struct ApplicationSettings {
 
 #[derive(Deserialize, Debug)]
 pub struct ServicesSettings {
-    book_catalog: ServiceSettings,
-    ratings: ServiceSettings
+    pub book_catalog: ServiceSettings,
+    pub ratings: ServiceSettings
 }
 
 #[derive(Deserialize, Debug)]
 pub struct ServiceSettings {
-    url: String
+    pub url: String
 }
 
 pub fn get_config() -> Result<Settings, config::ConfigError> {

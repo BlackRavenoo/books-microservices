@@ -20,9 +20,9 @@ pub enum ApiError {
 impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            Self::ConfigError => HttpResponse::InternalServerError().json("Configuration error"),
+            Self::ConfigError => HttpResponse::InternalServerError().finish(),
             Self::ServiceError(msg) => HttpResponse::BadGateway().json(msg),
-            Self::ValidationError => HttpResponse::BadRequest().json("Invalid parameters"),
+            Self::ValidationError => HttpResponse::BadRequest().body("Invalid parameters"),
             Self::NotFound => HttpResponse::NotFound().finish(),
         }
     }

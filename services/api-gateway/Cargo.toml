@@ -13,5 +13,6 @@ actix-web.workspace = true
 tracing-actix-web.workspace = true
 reqwest.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
 
 telemetry.workspace = true

@@ -3,7 +3,7 @@ use std::net::TcpListener;
 use actix_web::{dev::Server, web::{self, Data}, App, HttpResponse, HttpServer};
 use tracing_actix_web::TracingLogger;
 
-use crate::client::ServiceClient;
+use crate::{client::ServiceClient, routes::configure_routes};
 
 pub fn run(
     listener: TcpListener,
@@ -16,6 +16,7 @@ pub fn run(
             .wrap(TracingLogger::default())
             .app_data(client.clone())
             .route("/health", web::to(HttpResponse::Ok))
+            .configure(configure_routes)
     })
     .listen(listener)?
     .run();

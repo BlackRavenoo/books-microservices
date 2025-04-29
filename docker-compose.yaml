@@ -110,23 +110,24 @@ services:
       - APP_S3__SECRET_KEY=${S3_SECRET_KEY}
       - APP_S3__REGION=ru-central-1
       - APP_S3__ENDPOINT=https://s3.cloud.ru
-  akhq:
-    image: tchiotludo/akhq:0.25.1
-    restart: unless-stopped
-    environment:
-      AKHQ_CONFIGURATION: |
-        akhq:
-          connections:
-            docker-kafka-server:
-              properties:
-                bootstrap.servers: "kafka:9092"
-              connect:
-                - name: "connect"
-                  url: "http://connect:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    depends_on:
+      book-catalog:
+        condition: service_healthy
     ports:
-      - 8080:8080
-    links:
-      - kafka
+      - "5000:5000"
+    environment:
+      - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
+
 
 volumes:
   pg_data:
