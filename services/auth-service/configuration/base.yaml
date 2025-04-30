@@ -14,3 +14,6 @@ auth:
   private_key_path: ./keys/private.pem
   public_key_path: ./keys/public.pem
   issuer: auth-service
+  
+redis:
+  url: "redis://localhost:6379"

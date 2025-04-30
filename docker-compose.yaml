@@ -8,11 +8,12 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_DB=${METADATA_POSTGRES_DB:-book_catalog}
+      - POSTGRES_MULTIPLE_DATABASES=${METADATA_DB:-book_catalog},${AUTH_DB:-auth_service}
     volumes:
       - pg_data:/var/lib/postgresql/data
+      - ./infra/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
     healthcheck:
-      test: pg_isready -U ${POSTGRES_USER:-postgres} -d ${METADATA_POSTGRES_DB:-book_catalog}
+      test: pg_isready -U ${POSTGRES_USER:-postgres} -d ${METADATA_DB:-book_catalog}
       interval: 10s
       timeout: 5s
       retries: 5
@@ -60,7 +61,7 @@ services:
 
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_DB=${METADATA_POSTGRES_DB:-book_catalog}
+      - POSTGRES_DB=${METADATA_DB:-book_catalog}
     ports:
       - "8083:8083"
     volumes:
@@ -89,6 +90,14 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
   book-catalog:
     build:
       context: .
@@ -101,7 +110,7 @@ services:
     ports:
       - "4001:5000"
     environment:
-      - APP_DATABASE__HOST=${POSTGRES_USER:-postgres}
+      - APP_DATABASE__HOST=postgres
       - APP_DATABASE__PASSWORD=${POSTGRES_PASSWORD:-password}
       - APP_DATABASE__DATABASE_NAME=${POSTGRES_DB:-book_catalog}
       - APP_DATABASE__PORT=${POSTGRES_PORT:-5432}
@@ -128,7 +137,26 @@ services:
     environment:
       - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./services/auth-service/keys:/app/server/keys
+    environment:
+      - APP_DATABASE__HOST=postgres
+      - APP_DATABASE__PASSWORD=${POSTGRES_PASSWORD:-password}
+      - APP_DATABASE__DATABASE_NAME=${AUTH_DB:-auth_service}
+      - APP_DATABASE__PORT=${POSTGRES_PORT:-5432}
+      - APP_DATABASE__REQUIRE_SSL=false
+      - APP_REDIS__URL=redis://redis:6379
 
 volumes:
   pg_data:
   es_data:
+  redis_data:

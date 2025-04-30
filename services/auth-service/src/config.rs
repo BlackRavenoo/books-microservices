@@ -11,6 +11,7 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub redis: RedisSettings,
     pub auth: AuthSettings,
+    #[serde(default)]
     pub session: SessionSettings,
 }
 
@@ -26,7 +27,7 @@ pub struct RedisSettings {
     pub url: String
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct SessionSettings {
     pub secret_key: Option<SecretBox<String>>,
 }

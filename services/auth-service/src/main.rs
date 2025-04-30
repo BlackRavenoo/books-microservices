@@ -1,4 +1,6 @@
+use actix_session::storage::RedisSessionStore;
 use auth_service::{auth::{code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::get_config, services::user::UserService};
+use bb8_redis::{bb8::Pool, RedisConnectionManager};
 use sqlx::postgres::PgPoolOptions;
 use telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
@@ -29,18 +31,16 @@ async fn main() -> std::io::Result<()> {
 
     let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
         .expect("Failed to create Redis manager");
-    let redis_pool = Arc::new(
-        Pool::builder()
-            .build(redis_manager)
-            .await
-            .expect("Failed to build Redis pool"),
-    );
+    let redis_pool = Pool::builder()
+        .build(redis_manager)
+        .await
+        .expect("Failed to build Redis pool");
 
-    let redis_store = RedisSessionStore::new("redis://127.0.0.1:6379")
+    let redis_store = RedisSessionStore::new(config.redis.url.clone())
         .await
         .expect("Failed to connect to Redis");
 
-    let token_store = TokenStore::new(redis_pool);
+    let token_store = TokenStore::new(redis_pool.clone());
 
     let code_store = CodeStore::new(redis_pool);
 

@@ -18,6 +18,7 @@ RUN cargo build --release --bin book-catalog
 RUN rm -rf services/book-catalog/src
 
 COPY . .
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin book-catalog
 
 FROM debian:bookworm-slim AS runtime

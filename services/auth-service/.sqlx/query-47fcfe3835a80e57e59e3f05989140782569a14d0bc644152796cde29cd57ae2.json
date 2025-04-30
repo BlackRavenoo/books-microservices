@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.name FROM roles r\n            JOIN user_roles ur ON r.id = ur.role_id\n            WHERE ur.user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "47fcfe3835a80e57e59e3f05989140782569a14d0bc644152796cde29cd57ae2"
+}
