@@ -1,0 +1,93 @@
+.modal-container {
+    position: fixed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    height: fit-content;
+    width: 400px;
+    max-height: 80%;
+    max-width: 80%;
+    background-color: var(--white);
+    border-radius: var(--border-radius);
+    border: none;
+    -webkit-box-shadow: var(--box-shadow);
+    -moz-box-shadow: var(--box-shadow);
+    box-shadow: var(--box-shadow);
+    padding: var(--padding-lg);
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
+    z-index: 9999;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+}
+
+.content-description {
+    font-size: .85rem;
+    font-weight: 400;
+    color: var(--gray-text-color);
+}
+
+.account {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--padding-xs);
+    width: 100%;
+    margin: var(--padding-sm) 0;
+    padding: var(--padding-xs) var(--padding-sm);
+    background-color: var(--font-gray);
+    border-radius: var(--border-radius);
+    transition: background-color 0.3s, color 0.3s, box-shadow 0.2s;
+}
+
+.avatar {
+    display: inline;
+    width: 50px;
+    height: 50px;
+    border-radius: 90px;
+    margin-right: var(--padding-xs);
+    box-shadow: var(--box-shadow);
+}
+
+.action {
+    width: 100%;
+    background-color: var(--primary-color);
+    color: var(--white);
+    transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.action:hover, .action:focus {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    outline: none;
+}
+
+.action:active {
+    transform: translateY(0);
+    filter: brightness(0.85);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.sub_href {
+    display: inline;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--gray-text-color);
+    text-decoration: none;
+    transition: filter 0.2s ease;
+}
+
+.sub_href:hover, .sub_href:focus, .sub_href:active {
+    filter: brightness(0.8);
+}

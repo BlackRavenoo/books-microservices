@@ -10,14 +10,14 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json --bin api-gateway
 
-COPY Cargo.toml Cargo.lock ./
 COPY services/api-gateway/Cargo.toml services/api-gateway/
 RUN mkdir -p services/api-gateway/src && \
     echo "fn main() {}" > services/api-gateway/src/main.rs
 RUN cargo build --release --bin api-gateway
 RUN rm -rf services/api-gateway/src
 
-COPY . .
+COPY crates crates
+COPY services/api-gateway services/api-gateway
 RUN cargo build --release --bin api-gateway
 
 FROM debian:bookworm-slim AS runtime

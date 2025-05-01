@@ -30,7 +30,7 @@ pub async fn login(
         },
         Err(_) => {
             HttpResponse::Found()
-                .append_header(("Location", "/login?login_error=Неверный+email+или+пароль"))
+                .append_header(("Location", "/?page=login&login_error=Неверный+email+или+пароль"))
                 .finish()
         }
     }
@@ -42,20 +42,20 @@ pub async fn register(
 ) -> impl Responder {
     if form.password != form.password_confirm {
         return HttpResponse::Found()
-            .append_header(("Location", "/login?register_error=Пароли+не+совпадают"))
+            .append_header(("Location", "/?page=registration&registration_error=Пароли+не+совпадают"))
             .finish();
     }
     
     match user_service.register(&form.name, &form.email, &form.password).await {
         Ok(_) => {
             HttpResponse::Found()
-                .append_header(("Location", "/login?registered=true"))
+                .append_header(("Location", "/?page=login&registered=true"))
                 .finish()
         },
         Err(e) => {
             tracing::error!("Failed to register user: {:?}", e);
             HttpResponse::Found()
-                .append_header(("Location", "/login?register_error=Ошибка+сервера+при+регистрации"))
+                .append_header(("Location", "/?page=registration?registration_error=Ошибка+сервера+при+регистрации"))
                 .finish()
         }
     }

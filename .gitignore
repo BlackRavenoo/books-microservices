@@ -3,3 +3,6 @@ target/
 __pycache__/
 *.pyc
 keys/
+node_modules/
+bundle.js*
+bundle.css

@@ -13,6 +13,7 @@ config.workspace = true
 actix-web.workspace = true
 actix-web-httpauth.workspace = true
 actix-session.workspace = true
+actix-files.workspace = true
 tracing-actix-web.workspace = true
 reqwest.workspace = true
 thiserror.workspace = true

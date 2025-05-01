@@ -10,14 +10,14 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json --bin book-catalog
 
-COPY Cargo.toml Cargo.lock ./
 COPY services/book-catalog/Cargo.toml services/book-catalog/
 RUN mkdir -p services/book-catalog/src && \
     echo "fn main() {}" > services/book-catalog/src/main.rs
 RUN cargo build --release --bin book-catalog
 RUN rm -rf services/book-catalog/src
 
-COPY . .
+COPY crates crates
+COPY services/book-catalog services/book-catalog
 ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin book-catalog
 
