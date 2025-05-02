@@ -9,7 +9,6 @@ members = [
     "services/api-gateway",
     "services/auth-service",
     "services/book-catalog",
-    "services/book-storage",
 
     "crates/telemetry",
     "crates/cache"
