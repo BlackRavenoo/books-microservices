@@ -283,6 +283,49 @@ pub async fn refresh_token(
     })
 }
 
+pub async fn me(
+    auth: BearerAuth,
+    jwt_service: web::Data<JwtService>,
+    user_service: web::Data<UserService>,
+) -> impl Responder {
+    let token = auth.token();
+    
+    let claims = match jwt_service.validate_token(token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            return HttpResponse::Unauthorized().json(ErrorResponse {
+                error: "invalid_token",
+                error_description: &e,
+            });
+        }
+    };
+    
+    let user_id = claims.sub.parse::<i32>().unwrap_or_default();
+    
+    let roles = match user_service.get_user_roles(user_id).await {
+        Ok(roles) => roles,
+        Err(e) => {
+            tracing::error!("Failed to fetch user roles: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        }
+    };
+    
+    let username = match user_service.get_username(user_id).await {
+        Ok(username) => username,
+        Err(e) => {
+            tracing::error!("Failed to get username: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        },
+    };
+    
+    HttpResponse::Ok().json(serde_json::json!({
+        "id": user_id,
+        "username": username,
+        "avatar_url": "", // TODO
+        "roles": roles
+    }))
+}
+
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/oauth")
@@ -290,5 +333,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/token", web::post().to(exchange_token))
             .route("/verify", web::post().to(verify_token))
             .route("/refresh", web::post().to(refresh_token))
+            .route("/me", web::get().to(me))
     );
 }

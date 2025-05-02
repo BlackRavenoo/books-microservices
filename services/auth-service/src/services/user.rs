@@ -1,5 +1,5 @@
 use sqlx::PgPool;
-use anyhow::{anyhow, Context, Result};
+use anyhow::anyhow;
 
 use crate::{auth::password::{self, verify_password}, schema::User};
 
@@ -12,7 +12,7 @@ impl UserService {
         Self { db_pool }
     }
     
-    pub async fn authenticate(&self, email: &str, password_input: String) -> Result<User> {
+    pub async fn authenticate(&self, email: &str, password_input: String) -> anyhow::Result<User> {
         let user = sqlx::query_as!(
             User,
             r#"SELECT id, name, email, password_hash FROM users WHERE email = $1"#,
@@ -27,7 +27,7 @@ impl UserService {
         Ok(user)
     }
     
-    pub async fn register(&self, name: &str, email: &str, password: &str) -> Result<i32> {
+    pub async fn register(&self, name: &str, email: &str, password: &str) -> anyhow::Result<i32> {
         let existing_user = sqlx::query!(
             r#"SELECT id FROM users WHERE email = $1"#,
             email
@@ -58,7 +58,7 @@ impl UserService {
         Ok(user_id)
     }
 
-    pub async fn get_user_roles(&self, user_id: i32) -> Result<Vec<String>> {
+    pub async fn get_user_roles(&self, user_id: i32) -> Result<Vec<String>, sqlx::Error> {
         sqlx::query_scalar!(
             "SELECT r.name FROM roles r
             JOIN user_roles ur ON r.id = ur.role_id
@@ -67,6 +67,15 @@ impl UserService {
         )
         .fetch_all(&self.db_pool)
         .await
-        .context("Failed to fetch user roles")
+    }
+
+    pub async fn get_username(&self, user_id: i32) -> Result<String, sqlx::Error> {
+        sqlx::query_scalar!(
+            "SELECT name FROM users
+            WHERE id = $1",
+            user_id
+        )
+        .fetch_one(&self.db_pool)
+        .await
     }
 }
