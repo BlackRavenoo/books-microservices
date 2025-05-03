@@ -3,7 +3,7 @@ use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use urlencoding::encode;
 
-use crate::{auth::{client_store::ClientStore, code_store::CodeStore, jwt::JwtService, pkce, token_store::TokenStore}, schema::{AuthorizationRequest, ErrorResponse, RefreshToken, RefreshTokenRequest, TokenRequest}, services::user::UserService};
+use crate::{auth::{client_store::ClientStore, code_store::CodeStore, jwt::JwtService, pkce, token_store::TokenStore}, schema::{AuthorizationRequest, ErrorResponse, OAuthTokenRequest, RefreshToken, TokenResponse}, services::user::UserService};
 
 async fn verify_token(
     jwt_service: web::Data<JwtService>,
@@ -60,7 +60,7 @@ pub async fn authorize(
         session.insert("return_to", return_to).unwrap();
         
         return HttpResponse::Found()
-            .append_header(("Location", "/login"))
+            .append_header(("Location", "/"))
             .finish();
     }
     
@@ -90,7 +90,7 @@ pub async fn authorize(
 }
 
 pub async fn exchange_token(
-    req: web::Json<TokenRequest>,
+    req: web::Form<OAuthTokenRequest>,
     code_store: web::Data<CodeStore>,
     token_store: web::Data<TokenStore>,
     jwt_service: web::Data<JwtService>,
@@ -99,188 +99,169 @@ pub async fn exchange_token(
 ) -> impl Responder {
     let req = req.into_inner();
 
-    if req.grant_type != "authorization_code" {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "unsupported_grant_type",
-            error_description: "grant_type must be 'authorization_code'",
-        });
+    match req {
+        OAuthTokenRequest::AuthorizationCode(req) => {
+            let client_exists = match client_store.client_exists(&req.client_id).await {
+                Ok(exists) => exists,
+                Err(e) => {
+                    tracing::error!("Failed to check client: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            if !client_exists {
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    error: "invalid_client",
+                    error_description: "Client not found",
+                });
+            }
+            
+            let auth_code = match code_store.consume_code(&req.code).await {
+                Ok(code) => code,
+                Err(e) => {
+                    tracing::warn!("Failed to consume authorization code: {:?}", e);
+                    return HttpResponse::BadRequest().json(ErrorResponse {
+                        error: "invalid_grant",
+                        error_description: "Invalid or expired authorization code",
+                    });
+                }
+            };
+            
+            if auth_code.client_id != req.client_id {
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    error: "invalid_grant",
+                    error_description: "client_id mismatch",
+                });
+            }
+            
+            if auth_code.redirect_uri != req.redirect_uri {
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    error: "invalid_grant",
+                    error_description: "redirect_uri mismatch",
+                });
+            }
+            
+            if let Err(err) = pkce::verify_code_challenge(
+                &req.code_verifier, 
+                &auth_code.code_challenge, 
+                &auth_code.code_challenge_method
+            ) {
+                tracing::warn!("PKCE verification failed: {:?}", err);
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    error: "invalid_grant",
+                    error_description: "PKCE verification failed",
+                });
+            }
+        
+            let roles = match user_service.get_user_roles(auth_code.user_id).await {
+                Ok(roles) => roles,
+                Err(e) => {
+                    tracing::error!("Failed to fetch user roles: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+        
+            let access_token = match jwt_service.create_access_token(
+                auth_code.user_id, 
+                "",
+                roles,
+            ) {
+                Ok(token) => token,
+                Err(_) => {
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            let refresh_token = match token_store.generate_refresh_token(RefreshToken {
+                user_id: auth_code.user_id,
+                fingerprint: req.fingerprint,
+            }).await {
+                Ok(token) => token,
+                Err(_) => {
+                    tracing::error!("Failed to generate refresh token");
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            HttpResponse::Ok().json(TokenResponse {
+                access_token,
+                token_type: "Bearer".to_string(),
+                expires_in: jwt_service.access_token_lifetime.num_seconds(),
+                refresh_token,
+            })
+        },
+        OAuthTokenRequest::RefreshToken(req) => {
+            let client_exists = match client_store.client_exists(&req.client_id).await {
+                Ok(exists) => exists,
+                Err(e) => {
+                    tracing::error!("Failed to check client: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            if !client_exists {
+                return HttpResponse::BadRequest().json(ErrorResponse {
+                    error: "invalid_client",
+                    error_description: "Client not found",
+                });
+            }
+            
+            let refresh_data = match token_store.validate_refresh_token(
+                &req.refresh_token,
+                &req.fingerprint
+            ).await {
+                Ok(data) => data,
+                Err(e) => {
+                    tracing::warn!("Invalid refresh token: {:?}", e);
+                    return HttpResponse::BadRequest().json(ErrorResponse {
+                        error: "invalid_grant",
+                        error_description: "Invalid refresh token",
+                    });
+                }
+            };
+            
+            let roles = match user_service.get_user_roles(refresh_data.user_id).await {
+                Ok(roles) => roles,
+                Err(e) => {
+                    tracing::error!("Failed to fetch user roles: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            let access_token = match jwt_service.create_access_token(
+                refresh_data.user_id, 
+                "",
+                roles,
+            ) {
+                Ok(token) => token,
+                Err(e) => {
+                    tracing::error!("Failed to create access token: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            let refresh_token = match token_store.rotate_refresh_token(
+                &req.refresh_token,
+                RefreshToken {
+                    user_id: refresh_data.user_id,
+                    fingerprint: req.fingerprint,
+                }
+            ).await {
+                Ok(new_token) => new_token,
+                Err(e) => {
+                    tracing::error!("Failed to rotate refresh token: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                }
+            };
+            
+            HttpResponse::Ok().json(TokenResponse {
+                access_token,
+                token_type: "Bearer".to_string(),
+                expires_in: jwt_service.access_token_lifetime.num_seconds(),
+                refresh_token,
+            })
+        },
     }
-    
-    let client_exists = match client_store.client_exists(&req.client_id).await {
-        Ok(exists) => exists,
-        Err(e) => {
-            tracing::error!("Failed to check client: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    if !client_exists {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_client",
-            error_description: "Client not found",
-        });
-    }
-    
-    let auth_code = match code_store.consume_code(&req.code).await {
-        Ok(code) => code,
-        Err(e) => {
-            tracing::warn!("Failed to consume authorization code: {:?}", e);
-            return HttpResponse::BadRequest().json(ErrorResponse {
-                error: "invalid_grant",
-                error_description: "Invalid or expired authorization code",
-            });
-        }
-    };
-    
-    if auth_code.client_id != req.client_id {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_grant",
-            error_description: "client_id mismatch",
-        });
-    }
-    
-    if auth_code.redirect_uri != req.redirect_uri {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_grant",
-            error_description: "redirect_uri mismatch",
-        });
-    }
-    
-    if let Err(err) = pkce::verify_code_challenge(
-        &req.code_verifier, 
-        &auth_code.code_challenge, 
-        &auth_code.code_challenge_method
-    ) {
-        tracing::warn!("PKCE verification failed: {:?}", err);
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_grant",
-            error_description: "PKCE verification failed",
-        });
-    }
-
-    let roles = match user_service.get_user_roles(auth_code.user_id).await {
-        Ok(roles) => roles,
-        Err(e) => {
-            tracing::error!("Failed to fetch user roles: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-
-    let access_token = match jwt_service.create_access_token(
-        auth_code.user_id, 
-        "",
-        roles,
-    ) {
-        Ok(token) => token,
-        Err(_) => {
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    let refresh_token = match token_store.generate_refresh_token(RefreshToken {
-        user_id: auth_code.user_id,
-        fingerprint: req.fingerprint,
-    }).await {
-        Ok(token) => token,
-        Err(_) => {
-            tracing::error!("Failed to generate refresh token");
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    HttpResponse::Ok().json(crate::schema::TokenResponse {
-        access_token,
-        token_type: "Bearer".to_string(),
-        expires_in: jwt_service.access_token_lifetime.num_seconds(),
-        refresh_token,
-    })
-}
-
-pub async fn refresh_token(
-    req: web::Json<RefreshTokenRequest>,
-    token_store: web::Data<TokenStore>,
-    jwt_service: web::Data<JwtService>,
-    client_store: web::Data<ClientStore>,
-    user_service: web::Data<UserService>,
-) -> impl Responder {
-    let req = req.into_inner();
-
-    if req.grant_type != "refresh_token" {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_request",
-            error_description: "grant_type must be 'refresh_token'",
-        });
-    }
-    
-    let client_exists = match client_store.client_exists(&req.client_id).await {
-        Ok(exists) => exists,
-        Err(e) => {
-            tracing::error!("Failed to check client: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    if !client_exists {
-        return HttpResponse::BadRequest().json(ErrorResponse {
-            error: "invalid_client",
-            error_description: "Client not found",
-        });
-    }
-    
-    let refresh_data = match token_store.validate_refresh_token(
-        &req.refresh_token,
-        &req.fingerprint
-    ).await {
-        Ok(data) => data,
-        Err(e) => {
-            tracing::warn!("Invalid refresh token: {:?}", e);
-            return HttpResponse::BadRequest().json(ErrorResponse {
-                error: "invalid_grant",
-                error_description: "Invalid refresh token",
-            });
-        }
-    };
-    
-    let roles = match user_service.get_user_roles(refresh_data.user_id).await {
-        Ok(roles) => roles,
-        Err(e) => {
-            tracing::error!("Failed to fetch user roles: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    let access_token = match jwt_service.create_access_token(
-        refresh_data.user_id, 
-        "",
-        roles,
-    ) {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("Failed to create access token: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    let refresh_token = match token_store.rotate_refresh_token(
-        &req.refresh_token,
-        RefreshToken {
-            user_id: refresh_data.user_id,
-            fingerprint: req.fingerprint,
-        }
-    ).await {
-        Ok(new_token) => new_token,
-        Err(e) => {
-            tracing::error!("Failed to rotate refresh token: {:?}", e);
-            return HttpResponse::InternalServerError().finish();
-        }
-    };
-    
-    HttpResponse::Ok().json(crate::schema::TokenResponse {
-        access_token,
-        token_type: "Bearer".to_string(),
-        expires_in: jwt_service.access_token_lifetime.num_seconds(),
-        refresh_token,
-    })
 }
 
 pub async fn me(
@@ -332,7 +313,6 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/authorize", web::get().to(authorize))
             .route("/token", web::post().to(exchange_token))
             .route("/verify", web::post().to(verify_token))
-            .route("/refresh", web::post().to(refresh_token))
             .route("/me", web::get().to(me))
     );
 }

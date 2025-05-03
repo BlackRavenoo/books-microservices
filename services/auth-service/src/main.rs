@@ -1,5 +1,5 @@
 use actix_session::storage::RedisSessionStore;
-use auth_service::{auth::{code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::get_config, services::user::UserService};
+use auth_service::{auth::{client_store::ClientStore, code_store::CodeStore, jwt::JwtService, token_store::TokenStore}, config::get_config, services::user::UserService};
 use bb8_redis::{bb8::Pool, RedisConnectionManager};
 use sqlx::postgres::PgPoolOptions;
 use telemetry::{get_subscriber, init_subscriber};
@@ -44,7 +44,18 @@ async fn main() -> std::io::Result<()> {
 
     let code_store = CodeStore::new(redis_pool);
 
+    let client_store = ClientStore::new(connection_pool.clone());
+
     let user_service = UserService::new(connection_pool);
 
-    run(listener, jwt_service, token_store, code_store, user_service, redis_store, config)?.await
+    run(
+        listener,
+        jwt_service,
+        token_store,
+        code_store,
+        user_service,
+        client_store,
+        redis_store,
+        config
+    )?.await
 }
