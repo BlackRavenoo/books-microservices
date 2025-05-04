@@ -4,8 +4,8 @@ import FingerprintJS from '@fingerprintjs/fingerprintjs';
 export const AUTH_CONFIG = {
     clientId: 'book-app',
     authorizationEndpoint: 'http://127.0.0.1:5001/oauth/authorize',
-    tokenEndpoint: '/oauth/token',
-    userInfoEndpoint: '/oauth/me',
+    tokenEndpoint: 'http://127.0.0.1:5001/oauth/token',
+    userInfoEndpoint: 'http://127.0.0.1:5001/oauth/me',
     redirectUri: window.location.origin + '/callback',
     scope: ''
 };

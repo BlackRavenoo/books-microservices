@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use reqwest::{redirect::Policy, Client};
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{BookSchema, BooksListQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{BookFullSchema, BookSchema, BooksListQuery}};
 
 pub struct ServiceClient {
     client: Client,
@@ -39,17 +39,65 @@ impl ServiceClient {
             })?;
             
         if !response.status().is_success() {
-            return Err(ApiError::ServiceError(format!(
+            Err(ApiError::ServiceError(format!(
                 "Book catalog service returned error status: {}", 
                 response.status()
-            )));
+            )))
+        } else {
+            response.json::<Vec<BookSchema>>()
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to deserialize book catalog response: {:?}", e);
+                    ApiError::ServiceError(format!("Invalid response from book catalog service: {}", e))
+                })
         }
         
-        response.json::<Vec<BookSchema>>()
+    }
+
+    pub async fn get_book(&self, id: u64) -> Result<BookFullSchema, ApiError> {
+        let url = format!("{}/api/v1/books/{}", self.config.book_catalog.url, id);
+
+        let response = self.client.get(&url)
+            .send()
             .await
             .map_err(|e| {
-                tracing::error!("Failed to deserialize book catalog response: {:?}", e);
-                ApiError::ServiceError(format!("Invalid response from book catalog service: {}", e))
-            })
+                tracing::error!("Failed to call book-catalog service: {:?}", e);
+                ApiError::ServiceError(format!("Failed to connect to book catalog service: {}", e))
+            })?;
+
+        if response.status().is_success() {
+            Err(ApiError::ServiceError(format!(
+                "Book catalog service returned error status: {}", 
+                response.status()
+            )))
+        } else {
+            response.json::<BookFullSchema>()
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to deserialize book catalog response: {:?}", e);
+                    ApiError::ServiceError(format!("Invalid response from book catalog service: {}", e))
+                })
+        }
+    }
+
+    pub async fn update_book(&self, id: u64) -> Result<(), ApiError> {
+        let url = format!("{}/api/v1/books/{}", self.config.book_catalog.url, id);
+
+        let response = self.client.put(&url)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to call book-catalog service: {:?}", e);
+                ApiError::ServiceError(format!("Failed to connect to book catalog service: {}", e))
+            })?;
+        
+        if response.status().is_success() {
+            Err(ApiError::ServiceError(format!(
+                "Book catalog service returned error status: {}", 
+                response.status()
+            )))
+        } else {
+            Ok(())
+        }
     }
 }

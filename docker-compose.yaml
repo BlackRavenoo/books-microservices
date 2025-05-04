@@ -98,6 +98,16 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/nginx.conf
+      - ./services/frontend/dist:/usr/share/nginx/html
+    depends_on:
+      - api-gateway
+
   book-catalog:
     build:
       context: .
@@ -133,7 +143,7 @@ services:
       book-catalog:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "4999:5000"
     environment:
       - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
 
