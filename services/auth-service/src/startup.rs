@@ -2,7 +2,8 @@ use std::net::TcpListener;
 
 use actix_files::Files;
 use actix_session::storage::RedisSessionStore;
-use actix_web::{cookie::Key, dev::Server, web, App, HttpResponse, HttpServer};
+use actix_web::{cookie::Key, dev::Server, http, web, App, HttpResponse, HttpServer};
+use actix_cors::Cors;
 use secrecy::ExposeSecret;
 use tracing_actix_web::TracingLogger;
 
@@ -34,6 +35,16 @@ pub fn run(
         App::new()
             .wrap(TracingLogger::default())
             .wrap(session_middleware(redis_store.clone(), secret_key.clone()))
+            .wrap(
+                Cors::default()
+                .allowed_origin_fn(|origin, _req_head| {
+                    origin.as_bytes().starts_with(b"http://localhost") ||
+                    origin.as_bytes().starts_with(b"http://127.0.0.1")
+                })
+                .allowed_methods(["GET", "POST", "OPTIONS", "DELETE", "PUT"])
+                .allowed_headers([http::header::AUTHORIZATION, http::header::CONTENT_TYPE])
+                .supports_credentials()
+            )
             .app_data(jwt_service.clone())
             .app_data(token_store.clone())
             .app_data(code_store.clone())

@@ -31,6 +31,7 @@ actix-web-httpauth = "0.8.2"
 actix-multipart = "0.7.2"
 actix-session = { version = "0.10.1", features = ["redis-session"] }
 actix-files = "0.6.6"
+actix-cors = "0.7.1"
 config = "0.15.11"
 secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
