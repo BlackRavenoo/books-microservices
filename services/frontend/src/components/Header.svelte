@@ -14,6 +14,7 @@
     let searchType = 'books';
     let isClosing = false;
     let searchContainer: HTMLElement;
+    let menuOpen = false;
 
     let user: User | null = null;
     let isAdmin = false;
@@ -45,6 +46,13 @@
     function handleClickOutside(event: MouseEvent) {
         if (showSearchBar && searchContainer && !searchContainer.contains(event.target as Node)) {
             closeSearchBar();
+        }
+
+        if (menuOpen) {
+            const userMenu = document.querySelector('.user-menu');
+            if (userMenu && !userMenu.contains(event.target as Node)) {
+                menuOpen = false;
+            }
         }
     }
     
@@ -83,6 +91,10 @@
             showResults = false;
         }, 300);
     }
+
+    function toggleUserMenu() {
+        menuOpen = !menuOpen;
+    }
 </script>
   
 <header>
@@ -110,13 +122,18 @@
         <div class="auth-section">
             {#if user}
                 <div class="user-menu">
-                    <button class="user-button">
+                    <button class="user-button" on:click={toggleUserMenu}>
                         {#if user.avatar_url}
                             <img src={user.avatar_url} alt={user.username} class="avatar" />
+                        {:else}
+                            <div class="avatar-placeholder">{user.username[0]}</div>
                         {/if}
-                        <span>{user.username}</span>
+                        <span class="username">{user.username}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
                     </button>
-                    <div class="dropdown-menu">
+                    <div class="dropdown-menu" class:active={menuOpen}>
                         <a href="/profile" use:link class="dropdown-item">Профиль</a>
                         <a href="/bookmarks" use:link class="dropdown-item">Закладки</a>
                         
@@ -403,5 +420,105 @@
     .result-status {
         font-size: 0.75rem;
         color: var(--text-muted);
+    }
+
+    .user-menu {
+        position: relative;
+    }
+
+    .user-button {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: none;
+        border: none;
+        color: var(--text-light);
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.25rem;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .user-button:hover {
+        background-color: var(--border-color);
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid var(--border-color);
+    }
+
+    .avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+
+    .username {
+        font-weight: 500;
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background-color: var(--light-bg);
+        border-radius: 0.25rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        min-width: 220px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 10;
+        border: 1px solid var(--border-color);
+    }
+
+    .dropdown-menu.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .dropdown-item {
+        display: block;
+        padding: 0.75rem 1rem;
+        color: var(--text-light);
+        text-decoration: none;
+        transition: background-color 0.2s;
+        text-align: left;
+        width: 100%;
+        font-size: 0.9rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+    }
+
+    .dropdown-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .dropdown-divider {
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 0.25rem 0;
+    }
+
+    .admin-item {
+        color: var(--primary-color);
+    }
+
+    .logout-btn {
+        color: #f44336;
     }
 </style>

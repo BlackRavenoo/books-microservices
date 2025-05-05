@@ -14,5 +14,8 @@ tracing-actix-web.workspace = true
 reqwest.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+tokio-stream.workspace = true
 
 telemetry.workspace = true
