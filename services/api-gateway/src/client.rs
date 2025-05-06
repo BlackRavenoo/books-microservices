@@ -90,10 +90,7 @@ impl ServiceClient {
         payload: web::Payload,
         peer_addr: Option<PeerAddr>
     ) -> Result<HttpResponse, Error> {
-        let url = format!("{}/api/v1/books/{}", self.config.book_catalog.url, req.uri().path());
-
-        println!("URL IS {}!", url);
-
+        let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
 
         let url = match Url::from_str(&url) {
             Ok(url) => url,
@@ -158,12 +155,16 @@ impl ServiceClient {
             }
         });
     
-        let forwarded_req = self.client
+        let mut forwarded_req = self.client
             .request(
                 reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap(),
                 new_url,
             )
             .body(reqwest::Body::wrap_stream(UnboundedReceiverStream::new(rx)));
+
+        for (name, value) in req.headers().iter() {
+            forwarded_req = forwarded_req.header(name.as_str(), value.as_bytes());
+        }
 
         let forwarded_req = match peer_addr {
             Some(PeerAddr(addr)) => forwarded_req.header("x-forwarded-for", addr.ip().to_string()),

@@ -30,6 +30,7 @@ pub async fn update_book(
     payload: web::Payload,
     peer_addr: Option<PeerAddr>
 ) -> Result<HttpResponse, actix_web::Error> {
+    // TODO: Check if user is admin
     client.update_book(req, payload, peer_addr).await
 }
 

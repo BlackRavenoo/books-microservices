@@ -54,13 +54,18 @@ pub struct UpdateBookSchema {
     pub title: Option<String>,
     pub description: Option<String>,
     pub status: Option<BookStatus>,
-    pub cover: Option<String>,
     pub series_id: Option<i32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags_to_delete: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub genres_to_delete: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub authors_to_delete: Vec<i32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags_to_add: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub genres_to_add: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub authors_to_add: Vec<i32>
 }
 

@@ -188,7 +188,7 @@
                         <div class="search-results">
                             {#each searchResults as result}
                                 <a href={`/book/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
-                                    <img src={result.cover} alt={result.title} class="result-cover" />
+                                    <img src={result.thumbnail} alt={result.title} class="result-cover" />
                                     <div class="result-info">
                                         <div class="result-title">{result.title}</div>
                                         <div class="result-status">{result.status}</div>

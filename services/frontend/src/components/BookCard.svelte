@@ -7,7 +7,7 @@
   
 <a href={`/book/${book.id}`} use:link class="book-card">
     <div class="book-cover">
-        <img src={book.cover} alt="{book.title}" />
+        <img src={book.thumbnail} alt="{book.title}" />
     </div>
     <div class="book-info">
         <h3 class="book-title">{book.title}</h3>

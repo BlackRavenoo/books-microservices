@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::utils::validators::is_valid_url;
 
 #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Decode, Encode)]
-#[sea_orm(rs_type = "i8", db_type = "TinyInteger")]
+#[sea_orm(rs_type = "i16", db_type = "TinyInteger")]
 pub enum BookStatus {
     Ongoing = 0,
     Completed = 1,
