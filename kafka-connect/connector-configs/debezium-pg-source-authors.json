@@ -1,0 +1,22 @@
+{
+    "name": "debezium-pg-connector-authors",
+    "config": {
+      "topic.prefix": "pg",
+      "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+      "tasks.max": "1",
+      "database.hostname": "postgres",
+      "database.port": 5432,
+      "database.user": "${POSTGRES_USER}",
+      "database.password": "${POSTGRES_PASSWORD}",
+      "database.dbname": "${POSTGRES_DB}",
+      "database.server.name": "metadata_db_server",
+      "table.include.list": "public.authors",
+      "plugin.name": "pgoutput",
+      "slot.name": "debezium_authors_slot",
+      "transforms": "unwrap,extract",
+      "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+      "transforms.unwrap.drop.tombstones": "false",
+      "transforms.extract.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+      "transforms.extract.whitelist": "id,name"
+    }
+}
