@@ -1,13 +1,14 @@
 <script lang="ts">
-    import { searchBooks } from '../api';
-    import type { BookSearchResult } from '../types';
+    import { search } from '../api';
+    import type { BookSearchResult, Author as AuthorSearchResult } from '../types';
     import { link } from 'svelte-routing';
     import { onDestroy, onMount } from 'svelte';
     import { authStore, type User } from '../store/authStore';
     import { startAuth } from '../utils/auth';
     
     let searchQuery = '';
-    let searchResults: BookSearchResult[] = [];
+    let bookResults: BookSearchResult[] = [];
+    let authorResults: AuthorSearchResult[] = [];
     let showResults = false;
     let debounceTimeout: number;
     let showSearchBar = false;
@@ -58,14 +59,24 @@
     
     async function handleSearch() {
         if (searchQuery.length < 2) {
-            searchResults = [];
+            bookResults = [];
+            authorResults = [];
             showResults = false;
             return;
         }
         
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(async () => {
-            searchResults = await searchBooks(searchQuery);
+            const results = await search(searchQuery, searchType);
+            
+            if (searchType === 'books') {
+                bookResults = results as BookSearchResult[];
+                authorResults = [];
+            } else {
+                authorResults = results as AuthorSearchResult[];
+                bookResults = [];
+            }
+            
             showResults = true;
         }, 300);
     }
@@ -87,7 +98,6 @@
             showSearchBar = false;
             isClosing = false;
             searchQuery = '';
-            searchResults = [];
             showResults = false;
         }, 300);
     }
@@ -121,6 +131,14 @@
         
         <div class="auth-section">
             {#if user}
+                {#if isAdmin}
+                    <a href="/admin/create-book" use:link class="create-button" title="Create new book">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </a>
+                {/if}
                 <div class="user-menu">
                     <button class="user-button" on:click={toggleUserMenu}>
                         {#if user.avatar_url}
@@ -136,13 +154,6 @@
                     <div class="dropdown-menu" class:active={menuOpen}>
                         <a href="/profile" use:link class="dropdown-item">Профиль</a>
                         <a href="/bookmarks" use:link class="dropdown-item">Закладки</a>
-                        
-                        {#if isAdmin}
-                            <div class="dropdown-divider"></div>
-                            <a href="/admin/books" use:link class="dropdown-item admin-item">Управление книгами</a>
-                            <a href="/admin/users" use:link class="dropdown-item admin-item">Управление пользователями</a>
-                        {/if}
-                        
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item logout-btn" on:click={handleLogout}>Выйти</button>
                     </div>
@@ -184,17 +195,30 @@
                         </button>
                     </div>
                     
-                    {#if showResults && searchResults.length > 0}
+                    {#if showResults && ((searchType === 'books' && bookResults.length > 0) || (searchType === 'authors' && authorResults.length > 0))}
                         <div class="search-results">
-                            {#each searchResults as result}
-                                <a href={`/book/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
-                                    <img src={result.thumbnail} alt={result.title} class="result-cover" />
-                                    <div class="result-info">
-                                        <div class="result-title">{result.title}</div>
-                                        <div class="result-status">{result.status}</div>
-                                    </div>
-                                </a>
-                            {/each}
+                            {#if searchType === 'books' && bookResults.length > 0}
+                                {#each bookResults as result}
+                                    <a href={`/book/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
+                                        <img src={result.thumbnail} alt={result.title} class="result-cover" />
+                                        <div class="result-info">
+                                            <div class="result-title">{result.title}</div>
+                                            <div class="result-status">{result.status}</div>
+                                        </div>
+                                    </a>
+                                {/each}
+                            {:else if searchType === 'authors' && authorResults.length > 0}
+                                {#each authorResults as result}
+                                    <a href={`/author/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
+                                        <div class="author-avatar">
+                                            {result.name[0]}
+                                        </div>
+                                        <div class="result-info">
+                                            <div class="result-title">{result.name}</div>
+                                        </div>
+                                    </a>
+                                {/each}
+                            {/if}
                         </div>
                     {/if}
                 </div>
@@ -241,6 +265,17 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
+    }
+
+    .create-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        color: white;
+        margin-right: 1rem;
     }
 
     .auth-button {
@@ -512,10 +547,6 @@
         height: 1px;
         background-color: var(--border-color);
         margin: 0.25rem 0;
-    }
-
-    .admin-item {
-        color: var(--primary-color);
     }
 
     .logout-btn {

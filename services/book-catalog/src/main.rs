@@ -17,9 +17,10 @@ async fn main() -> std::io::Result<()> {
     
     let db = Database::connect(config.database.get_options()).await.unwrap();
 
-    let search = ElasticsearchClient::new(&config.search.url, &config.search.index_name);
+    let search = ElasticsearchClient::new(&config.search.url, &config.search.books_index_name, &config.search.authors_index_name);
 
-    search.create_index().await.unwrap();
+    search.create_books_index().await.unwrap();
+    search.create_authors_index().await.unwrap();
 
     Migrator::up(&db, None).await
         .expect("Failed to migrate the database");

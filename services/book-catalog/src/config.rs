@@ -15,7 +15,8 @@ pub struct Settings {
 #[derive(Deserialize, Debug)]
 pub struct SearchSettings {
     pub url: String,
-    pub index_name: String
+    pub books_index_name: String,
+    pub authors_index_name: String
 }
 
 #[derive(Deserialize, Debug)]

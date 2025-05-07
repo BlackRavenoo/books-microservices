@@ -3,7 +3,7 @@ use bincode::{Decode, Encode};
 use sea_orm::{DerivePartialModel, FromQueryResult};
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::entity::book::{self, BookStatus};
+use crate::entity::{book::{self, BookStatus}, tag, genre};
 
 #[derive(Serialize)]
 pub enum OrderBy {
@@ -26,7 +26,7 @@ pub struct GetBookSchema {
 }
 
 #[derive(Deserialize)]
-pub struct SearchBookSchema {
+pub struct SearchSchema {
     pub q: String
 }
 
@@ -37,8 +37,11 @@ pub struct CreateBookSchema {
     pub status: BookStatus,
     pub cover: String,
     pub series_id: Option<i32>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub genres: Vec<i16>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub authors: Vec<i32>,
 }
 
@@ -78,13 +81,15 @@ pub struct UpdateBookForm {
 
 // Output schema
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "tag::Entity")]
 pub struct Tag {
     pub id: i16,
     pub name: String
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "genre::Entity")]
 pub struct Genre {
     pub id: i16,
     pub name: String

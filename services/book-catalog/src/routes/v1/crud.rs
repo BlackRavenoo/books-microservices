@@ -2,20 +2,20 @@ use std::io::Read;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
+use cache::{cache::HybridCache, expiry::Expiration};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
 use uuid::Uuid;
 
 use crate::{
     entity::{
-        book::{self, Entity as Book}, book_author, book_genre, book_tag
-    }, schema::{BookFullSchema, BookSchema, CreateBookForm, GetBookSchema, GetListSchema, SearchBookSchema, UpdateBookForm}, search::ElasticsearchClient, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
+        book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, genre, tag
+    }, schema::{BookFullSchema, BookSchema, ConstantsSchema, CreateBookForm, Genre, GetBookSchema, GetListSchema, Tag, UpdateBookForm}, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
 
 pub enum StorageId {
-    Cover = 0,
-    Avatar = 1
+    Cover = 0
 }
 
 // TODO: add custom order_by and custom fields
@@ -67,7 +67,20 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
     HttpResponse::Ok().json(books)
 }
 
-pub async fn get_book(db: web::Data<DatabaseConnection>, query: web::Path<GetBookSchema>) -> impl Responder {
+pub async fn get_book(
+    db: web::Data<DatabaseConnection>,
+    cache: web::Data<HybridCache<String, BookFullSchema>>,
+    query: web::Path<GetBookSchema>,
+) -> impl Responder {
+    match cache.get(
+        &query.id.to_string(),
+        Expiration::Minutes(10)
+    ).await {
+        Ok(Some(book)) => return HttpResponse::Ok().json(book),
+        Ok(None) => (),
+        Err(e) => tracing::error!("Failed to get book from cache: {:?}", e),
+    };
+
     let result = Book::find_by_id(query.id)
         .select_only()
         .columns([
@@ -133,7 +146,16 @@ pub async fn get_book(db: web::Data<DatabaseConnection>, query: web::Path<GetBoo
             let result = serde_json::from_value::<BookFullSchema>(book_value);
 
             match result {
-                Ok(book) => HttpResponse::Ok().json(book),
+                Ok(book) => {
+                    if let Err(e) = cache.set(
+                        query.id.to_string(),
+                        book.clone(),
+                        Expiration::Minutes(10)
+                    ).await {
+                        tracing::error!("Failed to insert book into cache: {:?}", e);
+                    };
+                    HttpResponse::Ok().json(book)
+                },
                 Err(e) => {
                     tracing::error!("Deserialization failed: {:?}", e);
                     HttpResponse::InternalServerError().finish()
@@ -263,6 +285,7 @@ pub async fn update_book(
     db: web::Data<DatabaseConnection>,
     storage: web::Data<S3StorageBackend>,
     book_id: web::Path<i32>,
+    cache: web::Data<HybridCache<String, BookFullSchema>>,
     MultipartForm(form): MultipartForm<UpdateBookForm>
 ) -> impl Responder {
     let cover = form.cover;
@@ -427,7 +450,10 @@ pub async fn update_book(
     }
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Ok().body("Book updated!"),
+        Ok(_) => {
+            let _ = cache.invalidate(book_id.to_string()).await;
+            HttpResponse::Ok().body("Book updated!")
+        },
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
@@ -435,14 +461,47 @@ pub async fn update_book(
     }
 }
 
-pub async fn search_books(search: web::Data<ElasticsearchClient>, query: web::Query<SearchBookSchema>) -> impl Responder {
-    let result = search.search(&query.q).await;
+pub async fn get_constants(
+    db: web::Data<DatabaseConnection>,
+    cache: web::Data<HybridCache<String, ConstantsSchema>>
+) -> impl Responder {
+    match cache.get(&String::new(), Expiration::Minutes(10)).await {
+        Ok(Some(consts)) => return HttpResponse::Ok().json(consts),
+        Ok(None) => (),
+        Err(e) => tracing::error!("Failed to get constants from cache: {:?}", e),
+    };
 
-    match result {
-        Ok(data) => HttpResponse::Ok().json(data),
-        Err(e) => {
-            tracing::error!("Failed to search book: {:?}", e);
-            HttpResponse::BadRequest().finish()
-        },
-    }
+    let tags = match tag::Entity::find()
+        .into_partial_model::<Tag>()
+        .all(db.as_ref())
+        .await {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::error!("Failed to fetch tags from db: {:?}", e);
+                return HttpResponse::InternalServerError().finish()
+            },
+        };
+
+    let genres = match genre::Entity::find()
+        .into_partial_model::<Genre>()
+        .all(db.as_ref())
+        .await {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::error!("Failed to fetch genres from db: {:?}", e);
+                return HttpResponse::InternalServerError().finish()
+            },
+        };
+
+    let constants = ConstantsSchema {
+        tags,
+        genres,
+        status: BookStatus::iter().collect()
+    };
+
+    if let Err(e) = cache.set(String::new(), constants.clone(), Expiration::Minutes(10)).await {
+        tracing::error!("Failed to insert constants into cache: {:?}", e);
+    };
+
+    HttpResponse::Ok().json(constants)
 }

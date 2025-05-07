@@ -10,7 +10,8 @@ database:
 
 search:
   url: "http://127.0.0.1:9200"
-  index_name: "pg.public.books"
+  books_index_name: "pg.public.books"
+  authors_index_name: "pg.public.authors"
 
 redis:
   url: redis://127.0.0.1:6379

@@ -28,15 +28,15 @@ export async function fetchBookDetails(id: string): Promise<Book | null> {
     }
 }
 
-export async function searchBooks(query: string): Promise<BookSearchResult[]> {
+export async function search(query: string, entity: string): Promise<any[]> {
     try {
-        const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+        const response = await fetch(`${API_BASE_URL}/${entity}/search?q=${encodeURIComponent(query)}`);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
-        console.error('Error searching books:', error);
+        console.error(`Error searching ${entity}:`, error);
         return [];
     }
 }
