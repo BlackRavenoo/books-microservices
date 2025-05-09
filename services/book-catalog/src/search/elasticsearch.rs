@@ -183,7 +183,7 @@ impl ElasticsearchClient {
                         "name_ngram": {
                             "type": "ngram",
                             "min_gram": 2,
-                            "max_gram": 4
+                            "max_gram": 3
                         }
                     }
                 }

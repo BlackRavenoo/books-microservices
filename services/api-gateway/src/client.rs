@@ -109,8 +109,11 @@ impl ServiceClient {
         ).await
     }
 
-    pub async fn search_book(&self, q: SearchQuery) -> Result<Vec<BookSchema>, ApiError> {
-        let url = format!("{}/api/v1/search", self.config.book_catalog.url);
+    pub async fn search<T>(&self, q: SearchQuery, entity: &str) -> Result<Vec<T>, ApiError>
+    where
+        T: for<'de> serde::Deserialize<'de>,
+    {
+        let url = format!("{}/api/v1/search/{}", self.config.book_catalog.url, entity);
 
         let response = self.client.get(url)
             .query(&q)
@@ -122,7 +125,7 @@ impl ServiceClient {
             })?;
 
         if response.status().is_success() {
-            response.json::<Vec<BookSchema>>()
+            response.json::<Vec<T>>()
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to deserialize book catalog response: {:?}", e);
