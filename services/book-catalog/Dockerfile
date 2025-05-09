@@ -30,6 +30,7 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/book-catalog server/server
 COPY services/book-catalog/configuration server/configuration
+COPY services/book-catalog/migration-data server/migration-data
 ENV APP_ENV=production
 WORKDIR /app/server
 ENTRYPOINT ["./server"]
