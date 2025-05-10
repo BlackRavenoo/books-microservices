@@ -5,19 +5,23 @@ use serde::{Deserialize, Serialize, Serializer};
 
 use crate::entity::{book::{self, BookStatus}, tag, genre};
 
-#[derive(Serialize)]
+#[derive(Deserialize)]
 pub enum OrderBy {
-    Rating,
+    #[serde(rename = "chap_count")]
     ChaptersCount,
+    #[serde(rename = "created_at")]
     CreatedAt,
+    #[serde(rename = "name_desc")]
     NameDesc,
+    #[serde(rename = "name_asc")]
     NameAsc
 }
 
 #[derive(Deserialize)]
 pub struct GetListSchema {
     pub page: Option<u64>,
-    pub page_size: Option<u64>
+    pub page_size: Option<u64>,
+    pub order_by: Option<OrderBy>
 }
 
 #[derive(Deserialize)]
@@ -35,7 +39,6 @@ pub struct CreateBookSchema {
     pub title: String,
     pub description: String,
     pub status: BookStatus,
-    pub cover: String,
     pub series_id: Option<i32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<i16>,

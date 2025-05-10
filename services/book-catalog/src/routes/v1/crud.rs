@@ -3,12 +3,12 @@ use std::io::Read;
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
 use cache::{cache::HybridCache, expiry::Expiration};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
 use uuid::Uuid;
 
 use crate::{
     entity::{
-        book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, genre, tag
+        book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, chapter, genre, tag
     }, schema::{BookFullSchema, BookSchema, ConstantsSchema, CreateBookForm, Genre, GetBookSchema, GetListSchema, Tag, UpdateBookForm}, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
@@ -18,15 +18,27 @@ pub enum StorageId {
     Cover = 0
 }
 
-// TODO: add custom order_by and custom fields
 pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetListSchema>) -> impl Responder {
     let query = query.into_inner();
     let page_size = query.page_size
         .and_then(|size| Some(size.clamp(10, 100)))
         .unwrap_or(DEFAULT_PAGE_SIZE);
 
-    let paginator = Book::find()
-        .order_by_desc(book::Column::CreatedAt)
+    let order_by = query.order_by.unwrap_or(crate::schema::OrderBy::CreatedAt);
+
+    let select = Book::find();
+
+    let paginator = match order_by {
+        crate::schema::OrderBy::ChaptersCount => select
+            .join(sea_orm::JoinType::LeftJoin, book::Relation::Chapter.def())
+            .group_by(book::Column::Id)
+            .order_by_desc(Expr::count(chapter::Column::Id.into_expr())),
+        crate::schema::OrderBy::CreatedAt => select.order_by_desc(book::Column::CreatedAt),
+        crate::schema::OrderBy::NameDesc => select.order_by_desc(book::Column::Title),
+        crate::schema::OrderBy::NameAsc => select.order_by_asc(book::Column::Title),
+    };
+
+    let paginator = paginator
         .into_partial_model::<BookSchema>()
         .paginate(db.as_ref(), page_size);
 
@@ -226,48 +238,55 @@ pub async fn create_book(
         },
     };
 
-    if let Err(e) = insert_book_relations::<_, book_tag::Entity, _>(
-        &transaction,
-        book_id,
-        fields.tags,
-        |book_id, tag_id| book_tag::ActiveModel {
-            book_id: Set(book_id),
-            tag_id: Set(tag_id),
+    if !fields.tags.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_tag::Entity, _>(
+            &transaction,
+            book_id,
+            fields.tags,
+            |book_id, tag_id| book_tag::ActiveModel {
+                book_id: Set(book_id),
+                tag_id: Set(tag_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_tags: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
         }
-    ).await {
-        tracing::error!("Failed to insert books_tags: {:?}", e);
-        return HttpResponse::InternalServerError().finish()
     }
 
-    if let Err(e) = insert_book_relations::<_, book_genre::Entity, _>(
-        &transaction,
-        book_id,
-        fields.genres,
-        |book_id, genre_id| book_genre::ActiveModel {
-            book_id: Set(book_id),
-            genre_id: Set(genre_id),
+    if !fields.genres.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_genre::Entity, _>(
+            &transaction,
+            book_id,
+            fields.genres,
+            |book_id, genre_id| book_genre::ActiveModel {
+                book_id: Set(book_id),
+                genre_id: Set(genre_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_genres: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
         }
-    ).await {
-        tracing::error!("Failed to insert books_genres: {:?}", e);
-        return HttpResponse::InternalServerError().finish()
     }
 
-    if let Err(e) = insert_book_relations::<_, book_author::Entity, _>(
-        &transaction,
-        book_id,
-        fields.authors,
-        |book_id, author_id| book_author::ActiveModel {
-            book_id: Set(book_id),
-            author_id: Set(author_id),
+    if !fields.authors.is_empty() {
+        if let Err(e) = insert_book_relations::<_, book_author::Entity, _>(
+            &transaction,
+            book_id,
+            fields.authors,
+            |book_id, author_id| book_author::ActiveModel {
+                book_id: Set(book_id),
+                author_id: Set(author_id),
+            }
+        ).await {
+            tracing::error!("Failed to insert books_authors: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
         }
-    ).await {
-        tracing::error!("Failed to insert books_authors: {:?}", e);
-        return HttpResponse::InternalServerError().finish()
     }
 
     match storage.save(storage_id, id, image).await {
         Ok(_) => (),
-        Err(_) => {
+        Err(e) => {
+            tracing::error!("Failed to upload cover {:?}", e);
             return HttpResponse::InternalServerError().finish()
         }
     };

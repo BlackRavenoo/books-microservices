@@ -1,4 +1,4 @@
-use std::net::TcpListener;
+use std::{net::TcpListener, time::Duration};
 
 use bb8_redis::{RedisConnectionManager, bb8::Pool};
 use book_catalog::{
@@ -32,6 +32,7 @@ async fn main() -> std::io::Result<()> {
     let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
         .expect("Failed to create Redis manager");
     let redis_pool = Pool::builder()
+            .connection_timeout(Duration::from_millis(100))
             .build(redis_manager)
             .await
             .expect("Failed to build Redis pool");

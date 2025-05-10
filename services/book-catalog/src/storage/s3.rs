@@ -23,8 +23,7 @@ impl S3StorageBackend {
                 None
             ).unwrap()
         )
-        .unwrap()
-        .with_path_style();
+        .unwrap();
 
         Self {
             bucket
@@ -53,7 +52,6 @@ impl S3StorageBackend {
         
         if code != 200 {
             let msg = format!("Failed to upload object, status code: {}", code);
-            tracing::error!(msg);
             return Err(anyhow::anyhow!(msg));
         }
 
