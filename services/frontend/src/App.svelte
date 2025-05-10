@@ -10,6 +10,7 @@
     import Footer from "./components/Footer.svelte";
     import Callback from "./routes/Callback.svelte";
     import Login from "./routes/Login.svelte";
+    import CreateBook from "./routes/CreateBook.svelte";
     
     export let url = "";
     
@@ -45,6 +46,7 @@
             <Route path="/book/:id" component={BookPage} />
             <Route path="/login" component={Login} />
             <Route path="/callback" component={Callback} />
+            <Route path="/admin/create-book" component={CreateBook} />
         </main>
         <Footer />
     </div>
