@@ -67,3 +67,10 @@ pub struct BookSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rating: Option<Rating>
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ConstantsSchema {
+    pub tags: Vec<Tag>,
+    pub genres: Vec<Genre>,
+    pub status: Vec<BookStatus>,
+}

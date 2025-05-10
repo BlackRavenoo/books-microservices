@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{BookFullSchema, BookSchema, BooksListQuery, SearchQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{BookFullSchema, BookSchema, BooksListQuery, SearchQuery, ConstantsSchema}};
 
 pub struct ServiceClient {
     client: Client,
@@ -109,6 +109,31 @@ impl ServiceClient {
         ).await
     }
 
+    pub async fn create_book(
+        &self,
+        req: HttpRequest,
+        payload: web::Payload,
+        peer_addr: Option<PeerAddr>
+    ) -> Result<HttpResponse, Error> {
+        let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
+
+        let url = match Url::from_str(&url) {
+            Ok(url) => url,
+            Err(e) => {
+                tracing::error!("Failed to create url from str: {:?}", e);
+                return Ok(HttpResponse::InternalServerError().finish())
+            },
+        };
+
+        self.forward_request(
+            req,
+            payload,
+            actix_web::http::Method::POST,
+            peer_addr,
+            url
+        ).await
+    }
+
     pub async fn search<T>(&self, q: SearchQuery, entity: &str) -> Result<Vec<T>, ApiError>
     where
         T: for<'de> serde::Deserialize<'de>,
@@ -190,5 +215,31 @@ impl ServiceClient {
         }
 
         Ok(client_resp.streaming(res.bytes_stream()))
+    }
+
+    pub async fn get_constants(&self) -> Result<ConstantsSchema, ApiError> {
+        let url = format!("{}/api/v1/constants", self.config.book_catalog.url);
+
+        let response = self.client.get(&url)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to call book-catalog service: {:?}", e);
+                ApiError::ServiceError(format!("Failed to connect to book catalog service: {}", e))
+            })?;
+
+        if response.status().is_success() {
+            response.json::<ConstantsSchema>()
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to deserialize book catalog response: {:?}", e);
+                    ApiError::ServiceError(format!("Invalid response from book catalog service: {}", e))
+                })
+        } else {
+                Err(ApiError::ServiceError(format!(
+                    "Book catalog service returned error status: {}", 
+                    response.status()
+                )))
+        }
     }
 }

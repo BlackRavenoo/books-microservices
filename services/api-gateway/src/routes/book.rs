@@ -34,6 +34,16 @@ pub async fn update_book(
     client.update_book(req, payload, peer_addr).await
 }
 
+pub async fn create_book(
+    client: web::Data<ServiceClient>,
+    req: HttpRequest,
+    payload: web::Payload,
+    peer_addr: Option<PeerAddr>
+) -> Result<HttpResponse, actix_web::Error> {
+    // TODO: Check if user is admin
+    client.create_book(req, payload, peer_addr).await
+}
+
 pub async fn search_book(
     client: web::Data<ServiceClient>,
     q: web::Query<SearchQuery>
@@ -51,5 +61,14 @@ pub async fn search_authors(
     match client.search::<Author>(q.into_inner(), "authors").await {
         Ok(books) => HttpResponse::Ok().json(books),
         Err(e) => e.error_response(),
+    }
+}
+
+pub async fn get_constants(
+    client: web::Data<ServiceClient>,
+) -> impl Responder {
+    match client.get_constants().await {
+        Ok(consts) => HttpResponse::Ok().json(consts),
+        Err(e) => e.error_response()
     }
 }
