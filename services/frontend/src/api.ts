@@ -1,4 +1,4 @@
-import type { BookPreview, Book, BookSearchResult, Constants, CreateBookFields } from './types.ts';
+import type { BookPreview, Book, BookSearchResult, Constants, CreateBookFields, UpdateBookFields } from './types.ts';
 
 const API_BASE_URL = '/api';
 
@@ -78,6 +78,37 @@ export async function createBook(coverFile: File, fields: CreateBookFields): Pro
         return await response.text();
     } catch (error) {
         console.error('Error creating book:', error);
+        throw error;
+    }
+}
+
+export async function updateBook(id: number, coverFile: File | null, fields: UpdateBookFields): Promise<any> {
+    try {
+        const formData = new FormData();
+        
+        if (coverFile) {
+            formData.append('cover', coverFile);
+        }
+
+        const fieldsBlob = new Blob([JSON.stringify(fields)], {
+            type: 'application/json'
+        });
+
+        formData.append('fields', fieldsBlob);
+        
+        const response = await fetch(`${API_BASE_URL}/books/${id}`, {
+            method: 'PUT',
+            body: formData,
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.text();
+    } catch (error) {
+        console.error(`Error updating book ${id}:`, error);
         throw error;
     }
 }

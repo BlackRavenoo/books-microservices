@@ -44,6 +44,7 @@ export interface Book {
     genres: Genre[];
     authors: Author[];
     chapters_count: number;
+    series_id: number | null;
 }
 
 export interface CreateBookFields {
@@ -54,4 +55,17 @@ export interface CreateBookFields {
     genres: number[];
     authors: number[];
     series_id?: number;
+}
+
+export interface UpdateBookFields {
+    title?: string;
+    description?: string;
+    status?: number;
+    series_id?: number | null;
+    tags_to_add?: number[];
+    tags_to_delete?: number[];
+    genres_to_add?: number[];
+    genres_to_delete?: number[];
+    authors_to_add?: number[];
+    authors_to_delete?: number[];
 }

@@ -11,6 +11,7 @@
     import Callback from "./routes/Callback.svelte";
     import Login from "./routes/Login.svelte";
     import CreateBook from "./routes/CreateBook.svelte";
+    import EditBook from "./routes/EditBook.svelte";
     
     export let url = "";
     
@@ -47,6 +48,7 @@
             <Route path="/login" component={Login} />
             <Route path="/callback" component={Callback} />
             <Route path="/admin/create-book" component={CreateBook} />
+            <Route path="/admin/edit-book/:id" component="{EditBook}" />
         </main>
         <Footer />
     </div>
