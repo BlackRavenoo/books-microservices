@@ -130,6 +130,7 @@ services:
       - APP_S3__REGION=ru-central-1
       - APP_S3__ENDPOINT=https://s3.cloud.ru
       - APP_S3__NAME=${S3_BUCKET_NAME}
+      - APP_REDIS__URL=redis://redis:6379
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/health"]
       interval: 10s

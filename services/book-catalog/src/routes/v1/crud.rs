@@ -106,7 +106,7 @@ pub async fn get_book(
             Expr::cust(r#"
                 COALESCE(
                     json_agg(
-                        json_build_object('id', tags.id, 'name', tags.name)
+                        DISTINCT jsonb_build_object('id', tags.id, 'name', tags.name)
                     ) FILTER (WHERE tags.id IS NOT NULL),
                     '[]'::json
                 )
@@ -117,7 +117,7 @@ pub async fn get_book(
             Expr::cust(r#"
                 COALESCE(
                     json_agg(
-                        json_build_object('id', genres.id, 'name', genres.name)
+                        DISTINCT jsonb_build_object('id', genres.id, 'name', genres.name)
                     ) FILTER (WHERE genres.id IS NOT NULL),
                     '[]'::json
                 )
@@ -128,7 +128,7 @@ pub async fn get_book(
             Expr::cust(r#"
                 COALESCE(
                     json_agg(
-                        json_build_object('id', authors.id, 'name', authors.name)
+                        DISTINCT jsonb_build_object('id', authors.id, 'name', authors.name)
                     ) FILTER (WHERE authors.id IS NOT NULL),
                     '[]'::json
                 )

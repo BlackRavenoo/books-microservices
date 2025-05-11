@@ -34,8 +34,8 @@ INSERT INTO clients (id, name) VALUES
     ('book-app', 'Book Reading App');
 
 INSERT INTO client_redirect_uris (client_id, redirect_uri) VALUES
-    ('book-app', 'http://localhost:4001/callback');
+    ('book-app', 'http://127.0.0.1/callback'),
+    ('book-app', 'http://localhost/callback');
 
 INSERT INTO roles (name) VALUES 
-    ('user'),
     ('admin');
