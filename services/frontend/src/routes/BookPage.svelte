@@ -39,18 +39,29 @@
     {:else if error || !book}
         <div class="error">Произошла ошибка при загрузке данных</div>
     {:else}
-        {#if isAdmin}
-            <div class="admin-controls">
-                <h3 class="admin-heading">Управление книгой</h3>
-                <div class="admin-buttons">
-                    <a href={`/admin/edit-book/${book.id}`} class="admin-button edit-btn">Редактировать книгу</a>
-                    <button class="admin-button delete-btn">Удалить книгу</button>
-                </div>
-            </div>
-        {/if}
         <div class="book-header">
             <div class="book-cover">
                 <img src={book.cover} alt={book.title} />
+
+                {#if isAdmin}
+                    <div class="admin-buttons">
+                        <button class="admin-icon-btn" title="Сообщение модератору">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </button>
+                        
+                        <button class="admin-icon-btn" title="Редактирование глав">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        </button>
+                        
+                        <button class="admin-icon-btn" title="Добавить главы">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                        </button>
+                        
+                        <a href={`/admin/edit-book/${book.id}`} class="admin-icon-btn" title="Редактирование тайтла">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </a>
+                    </div>
+                {/if}
             </div>
             <div class="book-info">
                 <h1 class="book-title">{book.title}</h1>
@@ -130,8 +141,10 @@
     }
     
     .book-cover {
+        position: relative;
         flex-shrink: 0;
         width: 240px;
+        align-self: flex-start;
     }
     
     .book-cover img {
@@ -243,5 +256,36 @@
         .book-chapters {
             flex-direction: column;
         }
+    }
+
+    .admin-buttons {
+        position: absolute;
+        bottom: 7px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-around;
+        background: linear-gradient(to top,rgba(0,0,0,.9),transparent);
+        padding-bottom: 6px;
+        border-bottom-left-radius: 0.5rem;
+        border-bottom-right-radius: 0.5rem;
+    }
+
+    .admin-icon-btn {
+        background-color: transparent;
+        border: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .admin-icon-btn:hover {
+        background-color: rgba(255, 255, 255, 0.2);
     }
 </style>

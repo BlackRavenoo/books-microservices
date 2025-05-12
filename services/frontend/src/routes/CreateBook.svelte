@@ -186,7 +186,7 @@
     {:else if success}
         <div class="success-message">
             <h2>Книга успешно создана!</h2>
-            <button class="button" on:click={() => success = false}>Добавить еще одну книгу</button>
+            <button class="action-button" on:click={() => success = false}>Добавить еще одну книгу</button>
         </div>
     {:else}
         <form on:submit|preventDefault={handleSubmit} class="book-form">
@@ -380,7 +380,7 @@
         font-weight: 700;
     }
     
-    .loading, .error-message, .success-message {
+    .loading, .error-message {
         text-align: center;
         padding: 2rem;
         border-radius: 0.5rem;
@@ -398,6 +398,16 @@
     .success-message {
         color: #10b981;
         background-color: rgba(16, 185, 129, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 2rem;
+        border-radius: 0.5rem;
+    }
+
+    .success-message h2 {
+        margin: 0;
     }
     
     .book-form {
@@ -613,7 +623,7 @@
         justify-content: center;
     }
     
-    .submit-button {
+    .action-button, .submit-button {
         padding: 0.75rem 2rem;
         background-color: var(--primary-color);
         color: white;
@@ -624,8 +634,13 @@
         transition: background-color 0.2s;
     }
     
-    .submit-button:hover {
+    .action-button:hover, .submit-button:hover {
         background-color: var(--secondary-color);
+    }
+
+    .action-button:focus, .submit-button:focus {
+        outline: 2px solid var(--focus-color, #4299e1);
+        outline-offset: 2px;
     }
     
     .submit-button:disabled {
