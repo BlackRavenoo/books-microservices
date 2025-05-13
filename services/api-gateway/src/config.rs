@@ -22,7 +22,8 @@ pub struct ServicesSettings {
 
 #[derive(Deserialize, Debug)]
 pub struct ServiceSettings {
-    pub url: String
+    pub name: String,
+    pub url: String,
 }
 
 pub fn get_config() -> Result<Settings, config::ConfigError> {

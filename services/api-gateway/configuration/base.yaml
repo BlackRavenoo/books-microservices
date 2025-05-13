@@ -3,7 +3,9 @@ application:
 
 services:
   book_catalog:
+    name: "book catalog"
     url: "http://book-catalog:8080"
 
   ratings:
+    name: "ratings service"
     url: "http://ratings-service:8080"
