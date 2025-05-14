@@ -3,12 +3,12 @@ use std::io::Read;
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
 use cache::{cache::HybridCache, expiry::Expiration};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
 use uuid::Uuid;
 
 use crate::{
     entity::{
-        book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, chapter, genre, tag
+        author, book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, chapter, genre, series, tag
     }, schema::{BookFullSchema, BookSchema, ConstantsSchema, CreateBookForm, Genre, GetBookSchema, GetListSchema, Tag, UpdateBookForm}, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
@@ -28,7 +28,7 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
 
     let select = Book::find();
 
-    let paginator = match order_by {
+    let mut paginator = match order_by {
         crate::schema::OrderBy::ChaptersCount => select
             .join(sea_orm::JoinType::LeftJoin, book::Relation::Chapter.def())
             .group_by(book::Column::Id)
@@ -37,6 +37,22 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
         crate::schema::OrderBy::NameDesc => select.order_by_desc(book::Column::Title),
         crate::schema::OrderBy::NameAsc => select.order_by_asc(book::Column::Title),
     };
+
+    if let (Some(target), Some(target_id)) = (query.target, query.target_id) {
+        match target {
+            crate::schema::Target::Author => {
+                paginator = paginator
+                    .join(sea_orm::JoinType::LeftJoin, book_author::Relation::Book.def().rev())
+                    .join(sea_orm::JoinType::InnerJoin, book_author::Relation::Author.def())
+                    .filter(author::Column::Id.eq(target_id))
+            },
+            crate::schema::Target::Series => {
+                paginator = paginator
+                    .join(sea_orm::JoinType::InnerJoin, book::Relation::Series.def())
+                    .filter(series::Column::Id.eq(target_id))
+            },
+        }
+    }
 
     let paginator = paginator
         .into_partial_model::<BookSchema>()
@@ -142,11 +158,11 @@ pub async fn get_book(
             "chapters_count"
         )
         .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Tag.def())
+        .join(sea_orm::JoinType::InnerJoin, book_tag::Relation::Tag.def())
         .join(sea_orm::JoinType::LeftJoin, book_genre::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::LeftJoin, book_genre::Relation::Genre.def())
+        .join(sea_orm::JoinType::InnerJoin, book_genre::Relation::Genre.def())
         .join(sea_orm::JoinType::LeftJoin, book_author::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::LeftJoin, book_author::Relation::Author.def())
+        .join(sea_orm::JoinType::InnerJoin, book_author::Relation::Author.def())
         .group_by(book::Column::Id)
         .into_json()
         .all(db.as_ref())
@@ -523,4 +539,28 @@ pub async fn get_constants(
     };
 
     HttpResponse::Ok().json(constants)
+}
+
+pub async fn get_author(
+    db: web::Data<DatabaseConnection>,
+    path: web::Path<i32>,
+) -> impl Responder {
+    let author_id = path.into_inner();
+    
+    let result = author::Entity::find_by_id(author_id)
+        .one(db.as_ref())
+        .await;
+    
+    match result {
+        Ok(Some(author)) => {
+            HttpResponse::Ok().json(author)
+        },
+        Ok(None) => {
+            HttpResponse::NotFound().body("Author not found")
+        },
+        Err(e) => {
+            tracing::error!("Failed to fetch author: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
 }

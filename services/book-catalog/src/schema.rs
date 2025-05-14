@@ -18,10 +18,20 @@ pub enum OrderBy {
 }
 
 #[derive(Deserialize)]
+pub enum Target {
+    #[serde(rename = "author")]
+    Author,
+    #[serde(rename = "series")]
+    Series,
+}
+
+#[derive(Deserialize)]
 pub struct GetListSchema {
     pub page: Option<u64>,
     pub page_size: Option<u64>,
-    pub order_by: Option<OrderBy>
+    pub order_by: Option<OrderBy>,
+    pub target: Option<Target>,
+    pub target_id: Option<i64>,
 }
 
 #[derive(Deserialize)]
@@ -138,7 +148,6 @@ pub struct AuthorSchema {
     pub id: i32,
     pub name: String,
     pub cover: String,
-    pub books: Vec<BookSchema>
 }
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode)]

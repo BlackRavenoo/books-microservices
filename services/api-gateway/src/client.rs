@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{BookFullSchema, BookSchema, BooksListQuery, ConstantsSchema, SearchQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ConstantsSchema, GetListSchema, SearchQuery}};
 
 pub struct ServiceClient {
     client: Client,
@@ -30,7 +30,7 @@ impl ServiceClient {
         }
     }
 
-    pub async fn get_books_list(&self, query: &BooksListQuery) -> Result<Vec<BookSchema>, ApiError> {
+    pub async fn get_books_list(&self, query: &GetListSchema) -> Result<Vec<BookSchema>, ApiError> {
         let url = format!("{}/api/v1/books", self.config.book_catalog.url);
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(query)).await
     }
@@ -153,6 +153,11 @@ impl ServiceClient {
 
     pub async fn get_constants(&self) -> Result<ConstantsSchema, ApiError> {
         let url = format!("{}/api/v1/constants", self.config.book_catalog.url);
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+    }
+
+    pub async fn get_author(&self, id: u64) -> Result<Author, ApiError> {
+        let url = format!("{}/api/v1/authors/{}", self.config.book_catalog.url, id);
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
     }
 

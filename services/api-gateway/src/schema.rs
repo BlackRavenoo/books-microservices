@@ -2,10 +2,33 @@ use serde::{Deserialize, Serialize};
 
 // Input
 
-#[derive(Deserialize, Serialize)]
-pub struct BooksListQuery {
-    page: Option<u64>,
-    page_size: Option<u64>
+#[derive(Serialize, Deserialize)]
+pub enum OrderBy {
+    #[serde(rename = "chap_count")]
+    ChaptersCount,
+    #[serde(rename = "created_at")]
+    CreatedAt,
+    #[serde(rename = "name_desc")]
+    NameDesc,
+    #[serde(rename = "name_asc")]
+    NameAsc
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Target {
+    #[serde(rename = "author")]
+    Author,
+    #[serde(rename = "series")]
+    Series,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct GetListSchema {
+    pub page: Option<u64>,
+    pub page_size: Option<u64>,
+    pub order_by: Option<OrderBy>,
+    pub target: Option<Target>,
+    pub target_id: Option<i64>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -37,6 +60,8 @@ pub struct Genre {
 pub struct Author {
     pub id: i32,
     pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

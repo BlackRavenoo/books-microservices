@@ -1,12 +1,10 @@
 use actix_web::{dev::PeerAddr, web, HttpRequest, HttpResponse, Responder, ResponseError};
 
-use crate::{client::ServiceClient, schema::{Author, BookSchema, BooksListQuery, SearchQuery}};
+use crate::{client::ServiceClient, schema::{Author, BookSchema, GetListSchema, SearchQuery}};
 
-
-// TODO: Bool "with_rating" field
 pub async fn get_books(
     client: web::Data<ServiceClient>,
-    query: web::Query<BooksListQuery>,
+    query: web::Query<GetListSchema>,
 ) -> impl Responder {
     match client.get_books_list(&query).await {
         Ok(books) => HttpResponse::Ok().json(books),
