@@ -16,6 +16,7 @@
     let isClosing = false;
     let searchContainer: HTMLElement;
     let menuOpen = false;
+    let createMenuOpen = false;
 
     let user: User | null = null;
     let isAdmin = false;
@@ -53,6 +54,13 @@
             const userMenu = document.querySelector('.user-menu');
             if (userMenu && !userMenu.contains(event.target as Node)) {
                 menuOpen = false;
+            }
+        }
+
+        if (createMenuOpen) {
+            const createMenu = document.querySelector('.create-menu');
+            if (createMenu && !createMenu.contains(event.target as Node)) {
+                createMenuOpen = false;
             }
         }
     }
@@ -105,6 +113,10 @@
     function toggleUserMenu() {
         menuOpen = !menuOpen;
     }
+
+    function toggleCreateMenu() {
+        createMenuOpen = !createMenuOpen;
+    }
 </script>
   
 <header>
@@ -132,12 +144,30 @@
         <div class="auth-section">
             {#if user}
                 {#if isAdmin}
-                    <a href="/admin/create-book" use:link class="create-button" title="Create new book">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </a>
+                    <div class="create-menu">
+                        <button class="create-button" on:click={toggleCreateMenu} title="Create new content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                        <div class="create-dropdown-menu" class:active={createMenuOpen}>
+                            <a href="/admin/create-book" use:link class="dropdown-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                </svg>
+                                Добавить книгу
+                            </a>
+                            <a href="/admin/create-author" use:link class="dropdown-item">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                Добавить автора
+                            </a>
+                        </div>
+                    </div>
                 {/if}
                 <div class="user-menu">
                     <button class="user-button" on:click={toggleUserMenu}>
@@ -267,6 +297,11 @@
         align-items: center;
     }
 
+    .create-menu {
+        position: relative;
+        margin-right: 1rem;
+    }
+
     .create-button {
         display: flex;
         align-items: center;
@@ -274,8 +309,43 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
+        background-color: var(--primary-color);
         color: white;
-        margin-right: 1rem;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .create-button:hover {
+        background-color: var(--secondary-color);
+    }
+
+    .create-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        background-color: var(--light-bg);
+        border-radius: 0.25rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        min-width: 220px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.2s ease;
+        z-index: 10;
+        border: 1px solid var(--border-color);
+    }
+
+    .create-dropdown-menu.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    .create-dropdown-menu .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
 
     .auth-button {

@@ -1,18 +1,30 @@
-import type { BookPreview, Book, BookSearchResult, Constants, CreateBookFields, UpdateBookFields } from './types.ts';
+import type { BookPreview, Book, BookSearchResult, Constants, CreateBookFields, UpdateBookFields, AuthorWithCover, BooksListPage } from './types.ts';
 
 const API_BASE_URL = '/api';
 
-export async function fetchPopularBooks(): Promise<BookPreview[]> {
-    try {
-        const response = await fetch(`${API_BASE_URL}/books`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching popular books:', error);
-        return [];
+export async function fetchBooks(params: {
+    target?: string,
+    target_id?: number,
+    page?: number,
+    page_size?: number,
+    order_by?: string
+} = {}): Promise<BooksListPage> {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
+    if (params.order_by) queryParams.append('order_by', params.order_by);
+    if (params.target && params.target_id) {
+        queryParams.append('target', params.target);
+        queryParams.append('target_id', params.target_id.toString());
     }
+    
+    const response = await fetch(`${API_BASE_URL}/books?${queryParams.toString()}`);
+    
+    if (!response.ok) {
+        throw new Error(`Failed to fetch books: ${response.status} ${response.statusText}`);
+    }
+    
+    return await response.json();
 }
 
 export async function fetchBookDetails(id: string): Promise<Book | null> {
@@ -110,5 +122,80 @@ export async function updateBook(id: number, coverFile: File | null, fields: Upd
     } catch (error) {
         console.error(`Error updating book ${id}:`, error);
         throw error;
+    }
+}
+
+export async function createAuthor(coverFile: File | null, fields: { name: string }): Promise<any> {
+    try {
+        const formData = new FormData();
+        
+        if (coverFile) {
+            formData.append('cover', coverFile);
+        }
+
+        const fieldsBlob = new Blob([JSON.stringify(fields)], {
+            type: 'application/json'
+        });
+
+        formData.append('fields', fieldsBlob);
+        
+        const response = await fetch(`${API_BASE_URL}/authors`, {
+            method: 'POST',
+            body: formData,
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.text();
+    } catch (error) {
+        console.error('Error creating author:', error);
+        throw error;
+    }
+}
+
+export async function updateAuthor(id: number, coverFile: File | null, fields: { name?: string }): Promise<any> {
+    try {
+        const formData = new FormData();
+        
+        if (coverFile) {
+            formData.append('cover', coverFile);
+        }
+
+        const fieldsBlob = new Blob([JSON.stringify(fields)], {
+            type: 'application/json'
+        });
+
+        formData.append('fields', fieldsBlob);
+        
+        const response = await fetch(`${API_BASE_URL}/authors/${id}`, {
+            method: 'PUT',
+            body: formData,
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP error! Status: ${response.status}`);
+        }
+        
+        return await response.text();
+    } catch (error) {
+        console.error(`Error updating author ${id}:`, error);
+        throw error;
+    }
+}
+
+export async function fetchAuthorDetails(id: string): Promise<AuthorWithCover | null> {
+    try {
+        const response = await fetch(`${API_BASE_URL}/authors/${id}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch author: ${response.statusText}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching author details for ID ${id}:`, error);
+        return null;
     }
 }

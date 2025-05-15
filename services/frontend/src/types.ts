@@ -3,6 +3,12 @@ export interface BookPreview {
     title: string;
     thumbnail: string;
 }
+
+export interface BooksListPage {
+    max_page: number,
+    total_items: number,
+    items: BookPreview[]
+}
   
 export interface BookSearchResult extends BookPreview {
     status: string;
@@ -32,6 +38,11 @@ export interface Constants {
 export interface Author {
     id: number,
     name: string
+}
+export interface AuthorWithCover {
+    id: number;
+    name: string;
+    cover: string;
 }
 
 export interface Book {

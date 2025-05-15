@@ -1,16 +1,18 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchPopularBooks } from '../api';
-    import type { BookPreview } from '../types';
+    import { fetchBooks } from '../api';
+    import type { BookPreview, BooksListPage } from '../types';
     import BookCard from '../components/BookCard.svelte';
     
+    let page: BooksListPage | null = null;
     let books: BookPreview[] = [];
     let loading = true;
     let error = false;
     
     onMount(async () => {
         try {
-            books = await fetchPopularBooks();
+            page = await fetchBooks();
+            books = page.items;
             loading = false;
         } catch (e) {
             error = true;
