@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ConstantsSchema, GetListSchema, SearchQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ConstantsSchema, GetListSchema, PaginationSchema, SearchQuery}};
 
 pub struct ServiceClient {
     client: Client,
@@ -30,7 +30,7 @@ impl ServiceClient {
         }
     }
 
-    pub async fn get_books_list(&self, query: &GetListSchema) -> Result<Vec<BookSchema>, ApiError> {
+    pub async fn get_books_list(&self, query: &GetListSchema) -> Result<PaginationSchema<BookSchema>, ApiError> {
         let url = format!("{}/api/v1/books", self.config.book_catalog.url);
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(query)).await
     }
@@ -48,20 +48,12 @@ impl ServiceClient {
     ) -> Result<HttpResponse, Error> {
         let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
 
-        let url = match Url::from_str(&url) {
-            Ok(url) => url,
-            Err(e) => {
-                tracing::error!("Failed to create url from str: {:?}", e);
-                return Ok(HttpResponse::InternalServerError().finish())
-            },
-        };
-
         self.forward_request(
             req,
             payload,
             actix_web::http::Method::PUT,
             peer_addr,
-            url
+            &url
         ).await
     }
 
@@ -73,20 +65,12 @@ impl ServiceClient {
     ) -> Result<HttpResponse, Error> {
         let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
 
-        let url = match Url::from_str(&url) {
-            Ok(url) => url,
-            Err(e) => {
-                tracing::error!("Failed to create url from str: {:?}", e);
-                return Ok(HttpResponse::InternalServerError().finish())
-            },
-        };
-
         self.forward_request(
             req,
             payload,
             actix_web::http::Method::POST,
             peer_addr,
-            url
+            &url
         ).await
     }
 
@@ -104,9 +88,16 @@ impl ServiceClient {
         mut payload: web::Payload,
         method: actix_web::http::Method,
         peer_addr: Option<PeerAddr>,
-        url: Url
+        url: &str
     ) -> Result<HttpResponse, Error> {
-        let mut new_url = url.clone();
+        let mut new_url = match Url::from_str(&url) {
+            Ok(url) => url,
+            Err(e) => {
+                tracing::error!("Failed to create url from str: {:?}", e);
+                return Ok(HttpResponse::InternalServerError().finish())
+            },
+        };
+
         new_url.set_query(req.uri().query());
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -190,9 +181,10 @@ impl ServiceClient {
                 })
         } else {
             Err(ApiError::ServiceError(format!(
-                "{} returned error status: {}",
+                "{} returned error status: {}. Message: {}",
                 service_name, 
-                response.status()
+                response.status(),
+                response.text().await.unwrap_or_default()
             )))
         }
     }

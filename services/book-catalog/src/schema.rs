@@ -92,6 +92,30 @@ pub struct UpdateBookForm {
     pub fields: Json<UpdateBookSchema>
 }
 
+#[derive(Deserialize)]
+pub struct CreateAuthorSchema {
+    pub name: String
+}
+
+#[derive(MultipartForm)]
+pub struct CreateAuthorForm {
+    #[multipart(limit = "5MB")]
+    pub cover: TempFile,
+    pub fields: Json<CreateAuthorSchema>
+}
+
+#[derive(Deserialize)]
+pub struct UpdateAuthorSchema {
+    pub name: Option<String>
+}
+
+#[derive(MultipartForm)]
+pub struct UpdateAuthorForm {
+    #[multipart(limit = "5MB")]
+    pub cover: Option<TempFile>,
+    pub fields: Json<UpdateAuthorSchema>
+}
+
 // Output schema
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
@@ -131,6 +155,13 @@ pub struct BookFullSchema {
     pub genres: Vec<Genre>,
     pub authors: Vec<Author>,
     pub chapters_count: i16
+}
+
+#[derive(Serialize)]
+pub struct PaginationSchema<T> {
+    pub max_page: u64,
+    pub total_items: u64,
+    pub items: Vec<T>
 }
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]

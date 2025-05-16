@@ -9,13 +9,14 @@ use uuid::Uuid;
 use crate::{
     entity::{
         author, book::{self, BookStatus, Entity as Book}, book_author, book_genre, book_tag, chapter, genre, series, tag
-    }, schema::{BookFullSchema, BookSchema, ConstantsSchema, CreateBookForm, Genre, GetBookSchema, GetListSchema, Tag, UpdateBookForm}, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
+    }, schema::{BookFullSchema, BookSchema, ConstantsSchema, CreateAuthorForm, CreateBookForm, Genre, GetBookSchema, GetListSchema, PaginationSchema, Tag, UpdateAuthorForm, UpdateBookForm}, storage::s3::S3StorageBackend, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
 
 pub enum StorageId {
-    Cover = 0
+    BookCover = 0,
+    AuthorCover = 1,
 }
 
 pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetListSchema>) -> impl Responder {
@@ -59,23 +60,23 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
         .paginate(db.as_ref(), page_size);
 
     let result = paginator
-        .num_pages()
+        .num_items_and_pages()
         .await;
     
-    let page = if let Some(page) = query.page {
-        let pages_count = match result {
-            Ok(count) => count,
-            Err(e) => {
-                tracing::error!("Failed to get page count: {:?}", e);
-                return HttpResponse::InternalServerError().finish()
-            },
-        };
+    let total = match result {
+        Ok(count) => count,
+        Err(e) => {
+            tracing::error!("Failed to get page count: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        },
+    };
 
-        if page >= pages_count {
-            return HttpResponse::BadRequest().body(format!("Pages count = {}", pages_count))
+    let page = if let Some(page) = query.page {
+        if page > total.number_of_pages {
+            return HttpResponse::BadRequest().body(format!("Pages count = {}", total.number_of_pages))
         }
 
-        page
+        page - 1
     } else {
         0
     };
@@ -92,7 +93,13 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
         }
     };
 
-    HttpResponse::Ok().json(books)
+    let resp = PaginationSchema {
+        max_page: total.number_of_pages,
+        total_items: total.number_of_items,
+        items: books,
+    };
+
+    HttpResponse::Ok().json(resp)
 }
 
 pub async fn get_book(
@@ -158,11 +165,11 @@ pub async fn get_book(
             "chapters_count"
         )
         .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::InnerJoin, book_tag::Relation::Tag.def())
+        .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Tag.def())
         .join(sea_orm::JoinType::LeftJoin, book_genre::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::InnerJoin, book_genre::Relation::Genre.def())
+        .join(sea_orm::JoinType::LeftJoin, book_genre::Relation::Genre.def())
         .join(sea_orm::JoinType::LeftJoin, book_author::Relation::Book.def().rev())
-        .join(sea_orm::JoinType::InnerJoin, book_author::Relation::Author.def())
+        .join(sea_orm::JoinType::LeftJoin, book_author::Relation::Author.def())
         .group_by(book::Column::Id)
         .into_json()
         .all(db.as_ref())
@@ -207,7 +214,7 @@ pub async fn create_book(
 ) -> impl Responder {
     let mut cover = form.cover;
     let fields = form.fields.into_inner();
-    let storage_id = StorageId::Cover as u32;
+    let storage_id = StorageId::BookCover as u32;
 
     let mut buf = Vec::new();
 
@@ -249,7 +256,6 @@ pub async fn create_book(
         Ok(model) => model.id,
         Err(e) => {
             tracing::error!("Failed to insert book: {:?}", e);
-            let _ = storage.delete(storage_id, id).await;
             return HttpResponse::InternalServerError().finish();
         },
     };
@@ -390,7 +396,7 @@ pub async fn update_book(
             },
         };
 
-        if storage.save(StorageId::Cover as u32, cover_id, image).await.is_err() {
+        if storage.save(StorageId::BookCover as u32, cover_id, image).await.is_err() {
             return HttpResponse::InternalServerError().finish()
         };
     }
@@ -560,6 +566,155 @@ pub async fn get_author(
         },
         Err(e) => {
             tracing::error!("Failed to fetch author: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
+}
+
+pub async fn update_author(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    author_id: web::Path<i32>,
+    MultipartForm(form): MultipartForm<UpdateAuthorForm>
+) -> impl Responder {
+    let cover = form.cover;
+    let name = form.fields.0.name;
+    let author_id = author_id.into_inner();
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    let author = match author::Entity::find_by_id(author_id)
+        .one(&transaction)
+        .await {
+            Ok(Some(a)) => a,
+            Ok(None) => {
+                return HttpResponse::NotFound().body("Author not found");
+            },
+            Err(e) => {
+                tracing::error!("Failed to find author: {:?}", e);
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+
+    let cover_id = match storage.extract_uuid_from_url(&author.cover) {
+        Some(uuid) => uuid,
+        None => {
+            tracing::error!("Failed to get uuid from url.");
+            return HttpResponse::InternalServerError().finish()
+        },
+    };
+
+    let mut author_active: author::ActiveModel = author.into();
+
+    if let Some(name) = name {
+        author_active.name = Set(name);
+    }
+
+    if let Some(mut cover) = cover {
+        let mut buf = Vec::new();
+
+        if let Err(e) = cover.file.read_to_end(&mut buf) {
+            tracing::error!("Failed to read uploaded cover file: {:?}", e);
+            return HttpResponse::BadRequest().body("Could not read uploaded file");
+        }
+
+        let image = match process_image(&buf, 375) {
+            Ok(image) => image,
+            Err(e) => {
+                tracing::error!("Failed to process image: {:?}", e);
+                return HttpResponse::BadRequest().body("Could not process uploaded image")
+            },
+        };
+
+        if storage.save(StorageId::AuthorCover as u32, cover_id, image).await.is_err() {
+            return HttpResponse::InternalServerError().finish()
+        };
+    }
+
+    if let Err(e) = author_active.update(&transaction).await {
+        tracing::error!("Failed to update author: {:?}", e);
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    match transaction.commit().await {
+        Ok(_) => {
+            HttpResponse::Ok().body("Author updated!")
+        },
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
+}
+
+pub async fn create_author(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    MultipartForm(form): MultipartForm<CreateAuthorForm>
+) -> impl Responder {
+    let mut cover = form.cover;
+    let name = form.fields.0.name;
+    let storage_id = StorageId::AuthorCover as u32;
+
+    let mut buf = Vec::new();
+
+    if let Err(e) = cover.file.read_to_end(&mut buf) {
+        tracing::error!("Failed to read uploaded cover file: {:?}", e);
+        return HttpResponse::BadRequest().body("Could not read uploaded file");
+    }
+
+    let image = match process_image(&buf, 375) {
+        Ok(image) => image,
+        Err(e) => {
+            tracing::error!("Failed to process image: {:?}", e);
+            return HttpResponse::BadRequest().body("Could not process uploaded image")
+        },
+    };
+
+    let id = Uuid::new_v4();
+
+    let url = storage.get_url(storage_id, id);
+
+    let author = author::ActiveModel {
+        name: Set(name),
+        cover: Set(url),
+        ..Default::default()
+    };
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+    
+    match author.insert(&transaction).await {
+        Ok(_) => (),
+        Err(e) => {
+            tracing::error!("Failed to insert book: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    match storage.save(storage_id, id, image).await {
+        Ok(_) => (),
+        Err(e) => {
+            tracing::error!("Failed to upload cover {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    };
+
+    match transaction.commit().await {
+        Ok(_) => HttpResponse::Ok().body("Book created!"),
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
         },
     }

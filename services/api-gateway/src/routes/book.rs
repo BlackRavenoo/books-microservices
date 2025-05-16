@@ -22,7 +22,7 @@ pub async fn get_book(
     }
 }
 
-pub async fn update_book(
+pub async fn update_entity(
     client: web::Data<ServiceClient>,
     req: HttpRequest,
     payload: web::Payload,
@@ -32,7 +32,7 @@ pub async fn update_book(
     client.update_book(req, payload, peer_addr).await
 }
 
-pub async fn create_book(
+pub async fn create_entity(
     client: web::Data<ServiceClient>,
     req: HttpRequest,
     payload: web::Payload,
