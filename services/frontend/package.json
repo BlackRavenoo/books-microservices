@@ -1,5 +1,5 @@
 {
-    "name": "ranobelib-svelte",
+    "name": "booklib",
     "version": "1.0.0",
     "type": "module",
     "scripts": {
@@ -19,6 +19,7 @@
         "vite": "^5.0.0"
     },
     "dependencies": {
-        "@fingerprintjs/fingerprintjs": "^4.6.2"
+        "@fingerprintjs/fingerprintjs": "^4.6.2",
+        "svelte-carousel": "^1.0.25"
     }
 }
