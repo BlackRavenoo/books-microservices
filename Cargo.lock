@@ -935,6 +935,7 @@ dependencies = [
  "elasticsearch",
  "futures-util",
  "image",
+ "metrics-exporter-prometheus",
  "regex",
  "rust-s3",
  "sea-orm",

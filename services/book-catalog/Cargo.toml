@@ -34,3 +34,5 @@ cache.workspace = true
 bincode.workspace = true
 bb8-redis.workspace = true
 csv.workspace = true
+
+metrics-exporter-prometheus.workspace = true
