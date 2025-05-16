@@ -34,7 +34,6 @@
     let error: string | null = null;
     let success = false;
     
-    // Debounce function for search
     function debounce<F extends (...args: any[]) => any, T = any>(func: F, wait: number): (...args: Parameters<F>) => void {
         let timeout: ReturnType<typeof setTimeout> | null = null;
         
@@ -52,11 +51,9 @@
         };
     }
     
-    // Load book details and constants on mount
     onMount(async () => {
         isLoading = true;
         try {
-            // Fetch both book details and constants in parallel
             const [book, constants] = await Promise.all([
                 fetchBookDetails(id.toString()),
                 fetchConstants()
@@ -66,7 +63,6 @@
                 throw new Error('Книга не найдена');
             }
             
-            // Populate form with book data
             title = book.title;
             description = book.description;
             selectedStatus = book.status.id;
@@ -77,17 +73,14 @@
                 seriesId = book.series_id;
             }
             
-            // Save original collections for change tracking
             originalTags = book.tags.map(t => t.id);
             originalGenres = book.genres.map(g => g.id);
             originalAuthors = book.authors.map(a => a.id);
             
-            // Set initial selected collections
             selectedTags = [...originalTags];
             selectedGenres = [...originalGenres];
             selectedAuthors = book.authors.map(a => ({ id: a.id, name: a.name }));
             
-            // Set constants
             statuses = constants.status;
             tags = constants.tags;
             genres = constants.genres;
@@ -179,7 +172,6 @@
         isSubmitting = true;
         
         try {
-            // Calculate tag/genre/author changes
             const tagsToAdd = selectedTags.filter(id => !originalTags.includes(id));
             const tagsToDelete = originalTags.filter(id => !selectedTags.includes(id));
             

@@ -12,6 +12,10 @@
     import Login from "./routes/Login.svelte";
     import CreateBook from "./routes/CreateBook.svelte";
     import EditBook from "./routes/EditBook.svelte";
+    import CreateAuthor from "./routes/CreateAuthor.svelte";
+    import EditAuthor from "./routes/EditAuthor.svelte";
+    import AuthorPage from "./routes/AuthorPage.svelte";
+    import Catalog from "./routes/Catalog.svelte";
     
     export let url = "";
     
@@ -44,11 +48,15 @@
         <Header />
         <main>
             <Route path="/" component={Home} />
+            <Route path="/catalog" component={Catalog} />
             <Route path="/book/:id" component={BookPage} />
+            <Route path="/author/:id" component={AuthorPage} />
             <Route path="/login" component={Login} />
             <Route path="/callback" component={Callback} />
             <Route path="/admin/create-book" component={CreateBook} />
             <Route path="/admin/edit-book/:id" component="{EditBook}" />
+            <Route path="/admin/create-author" component="{CreateAuthor}" />
+            <Route path="/admin/edit-author/:id" component="{EditAuthor}" />
         </main>
         <Footer />
     </div>
