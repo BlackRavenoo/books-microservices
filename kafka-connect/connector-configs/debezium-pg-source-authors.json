@@ -17,6 +17,6 @@
       "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
       "transforms.unwrap.drop.tombstones": "false",
       "transforms.extract.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
-      "transforms.extract.whitelist": "id,name"
+      "transforms.extract.whitelist": "id,name,cover"
     }
 }

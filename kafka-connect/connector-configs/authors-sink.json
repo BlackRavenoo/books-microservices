@@ -13,7 +13,7 @@
         "transforms.extractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
         "transforms.extractId.field": "id",
         "transforms.selectFields.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
-        "transforms.selectFields.include": "id,name",
+        "transforms.selectFields.include": "id,name,cover",
         "elasticsearch.id": "${transforms.extractId}",
         "behavior.on.malformed.documents": "ignore",
         "behavior.on.null.values": "delete",
