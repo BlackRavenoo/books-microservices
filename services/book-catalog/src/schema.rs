@@ -32,6 +32,11 @@ pub struct GetListSchema {
     pub order_by: Option<OrderBy>,
     pub target: Option<Target>,
     pub target_id: Option<i64>,
+    pub genres_include: Option<Vec<i16>>,
+    pub genres_exclude: Option<Vec<i16>>,
+    pub tags_include: Option<Vec<i16>>,
+    pub tags_exclude: Option<Vec<i16>>,
+    pub statuses: Option<Vec<BookStatus>>,
 }
 
 #[derive(Deserialize)]
@@ -174,7 +179,7 @@ pub struct BookSchema {
     pub thumbnail: String,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct AuthorSchema {
     pub id: i32,
     pub name: String,

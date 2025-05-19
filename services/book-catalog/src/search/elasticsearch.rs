@@ -10,7 +10,7 @@ use elasticsearch::{
 };
 use serde_json::{json, Value};
 
-use crate::schema::{Author, BookSchema};
+use crate::schema::{AuthorSchema, BookSchema};
 
 pub struct ElasticsearchClient {
     elasticseach: Elasticsearch,
@@ -155,62 +155,63 @@ impl ElasticsearchClient {
         tracing::info!("Creating index {}", self.authors_index);
 
         let response = self.elasticseach
-        .indices()
-        .create(IndicesCreateParts::Index(&self.authors_index))
-        .body(json!({
-            "settings": {
-                "analysis": {
-                    "analyzer": {
-                        "name_analyzer": {
-                            "type": "custom",
-                            "tokenizer": "standard",
-                            "filter": [
-                                "lowercase",
-                                "asciifolding"
-                            ]
-                        },
-                        "ngram_name_analyzer": {
-                            "type": "custom",
-                            "tokenizer": "standard",
-                            "filter": [
-                                "lowercase",
-                                "asciifolding",
-                                "name_ngram"
-                            ]
-                        }
-                    },
-                    "filter": {
-                        "name_ngram": {
-                            "type": "ngram",
-                            "min_gram": 2,
-                            "max_gram": 3
-                        }
-                    }
-                }
-            },
-            "mappings": {
-                "properties": {
-                    "id": { "type": "integer" },
-                    "name": {
-                        "type": "text",
-                        "analyzer": "name_analyzer",
-                        "fields": {
-                            "keyword": {
-                                "type": "keyword",
-                                "ignore_above": 256
+            .indices()
+            .create(IndicesCreateParts::Index(&self.authors_index))
+            .body(json!({
+                "settings": {
+                    "analysis": {
+                        "analyzer": {
+                            "name_analyzer": {
+                                "type": "custom",
+                                "tokenizer": "standard",
+                                "filter": [
+                                    "lowercase",
+                                    "asciifolding"
+                                ]
                             },
-                            "ngram": {
-                                "type": "text",
-                                "analyzer": "ngram_name_analyzer"
+                            "ngram_name_analyzer": {
+                                "type": "custom",
+                                "tokenizer": "standard",
+                                "filter": [
+                                    "lowercase",
+                                    "asciifolding",
+                                    "name_ngram"
+                                ]
+                            }
+                        },
+                        "filter": {
+                            "name_ngram": {
+                                "type": "ngram",
+                                "min_gram": 2,
+                                "max_gram": 3
                             }
                         }
                     }
+                },
+                "mappings": {
+                    "properties": {
+                        "id": { "type": "integer" },
+                        "name": {
+                            "type": "text",
+                            "analyzer": "name_analyzer",
+                            "fields": {
+                                "keyword": {
+                                    "type": "keyword",
+                                    "ignore_above": 256
+                                },
+                                "ngram": {
+                                    "type": "text",
+                                    "analyzer": "ngram_name_analyzer"
+                                }
+                            }
+                        },
+                        "cover": { "type": "text" }
+                    }
                 }
-            }
-        }))
-        .send()
-        .await
-        .map_err(ElasticError::RequestError)?;
+            }))
+            .send()
+            .await
+            .map_err(ElasticError::RequestError)?;
 
         let status = response.status_code();
 
@@ -269,7 +270,7 @@ impl ElasticsearchClient {
         }
     }
 
-    pub async fn search_authors(&self, query: &str) -> Result<Vec<Author>, Error> {
+    pub async fn search_authors(&self, query: &str) -> Result<Vec<AuthorSchema>, Error> {
         let response = self.elasticseach
             .search(SearchParts::Index(&[&self.authors_index]))
             .body(json!({
@@ -279,7 +280,7 @@ impl ElasticsearchClient {
                         "fields": ["name", "name.ngram"]
                     }
                 },
-                "_source": ["id", "name"]
+                "_source": ["id", "name", "cover"]
             }))
             .send()
             .await?;

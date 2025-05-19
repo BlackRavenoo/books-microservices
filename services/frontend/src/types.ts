@@ -37,7 +37,8 @@ export interface Constants {
 
 export interface Author {
     id: number,
-    name: string
+    name: string,
+    cover: string
 }
 export interface AuthorWithCover {
     id: number;
