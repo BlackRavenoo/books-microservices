@@ -16,6 +16,7 @@ secrecy.workspace = true
 serde.workspace = true
 serde-aux.workspace = true
 serde_json.workspace = true
+serde_qs.workspace = true
 tracing-actix-web.workspace = true
 elasticsearch.workspace = true
 async-trait.workspace = true

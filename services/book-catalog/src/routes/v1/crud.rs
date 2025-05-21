@@ -3,8 +3,9 @@ use std::io::Read;
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
 use cache::{cache::HybridCache, expiry::Expiration};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, TransactionTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, Iterable, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, TransactionTrait};
 use uuid::Uuid;
+use serde_qs::actix::QsQuery;
 
 use crate::{
     entity::{
@@ -19,7 +20,7 @@ pub enum StorageId {
     AuthorCover = 1,
 }
 
-pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetListSchema>) -> impl Responder {
+pub async fn get_books(db: web::Data<DatabaseConnection>, query: QsQuery<GetListSchema>) -> impl Responder {
     let query = query.into_inner();
     let page_size = query.page_size
         .and_then(|size| Some(size.clamp(10, 100)))
@@ -55,6 +56,70 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
         }
     }
 
+    if let Some(genres) = query.genres_include {
+        if !genres.is_empty() {
+            let count = genres.len() as i64;
+            
+            let subquery = book_genre::Entity::find()
+                .filter(book_genre::Column::GenreId.is_in(genres))
+                .group_by(book_genre::Column::BookId)
+                .having(Expr::expr(Expr::col(book_genre::Column::GenreId).count_distinct()).eq(count))
+                .select_only()
+                .column(book_genre::Column::BookId)
+                .into_query();
+            
+            paginator = paginator.filter(book::Column::Id.in_subquery(subquery));
+        }
+    }
+
+    if let Some(genres) = query.genres_exclude {
+        if !genres.is_empty() {
+            let subquery = book_genre::Entity::find()
+                .filter(Expr::col(book_genre::Column::BookId).equals(book::Column::Id))
+                .filter(book_genre::Column::GenreId.is_in(genres))
+                .select_only()
+                .column(book_genre::Column::BookId)
+                .into_query();
+            
+            paginator = paginator.filter(Expr::exists(subquery).not());
+        }
+    }
+
+    if let Some(tags) = query.tags_include {
+        if !tags.is_empty() {
+            let count = tags.len() as i64;
+            
+            let subquery = book_tag::Entity::find()
+                .filter(book_tag::Column::TagId.is_in(tags))
+                .group_by(book_tag::Column::BookId)
+                .having(Expr::expr(Expr::col(book_tag::Column::TagId).count_distinct()).eq(count))
+                .select_only()
+                .column(book_tag::Column::BookId)
+                .into_query();
+            
+            paginator = paginator.filter(book::Column::Id.in_subquery(subquery));
+        }
+    }
+
+    if let Some(tags) = query.tags_exclude {
+        if !tags.is_empty() {
+            let subquery = book_tag::Entity::find()
+                .filter(Expr::col(book_tag::Column::BookId).equals(book::Column::Id))
+                .filter(book_tag::Column::TagId.is_in(tags))
+                .select_only()
+                .column(book_tag::Column::BookId)
+                .into_query();
+            
+            paginator = paginator.filter(Expr::exists(subquery).not());
+        }
+    }
+
+    if let Some(statuses) = query.statuses {
+        if !statuses.is_empty() {
+            paginator = paginator.filter(book::Column::Status.is_in(statuses));
+        }
+    }
+
     let paginator = paginator
         .into_partial_model::<BookSchema>()
         .paginate(db.as_ref(), page_size);
@@ -73,7 +138,11 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: web::Query<GetL
 
     let page = if let Some(page) = query.page {
         if page > total.number_of_pages {
-            return HttpResponse::BadRequest().body(format!("Pages count = {}", total.number_of_pages))
+            return HttpResponse::Ok().json(PaginationSchema{
+                max_page: total.number_of_pages,
+                total_items: total.number_of_items,
+                items: Vec::<BookSchema>::new(),
+            })
         }
 
         page - 1

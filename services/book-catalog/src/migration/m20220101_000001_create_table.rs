@@ -240,9 +240,45 @@ impl MigrationTrait for Migration {
             Index::create()
                 .name("idx-index-book_id")
                 .table(Chapter::Table)
-                .col(Chapter::Index)
                 .col(Chapter::BookId)
+                .col(Chapter::Index)
                 .unique()
+                .to_owned()
+        )
+        .await?;
+
+        manager.create_index(
+            Index::create()
+                .name("idx_book_genre_genre_id")
+                .table(BookGenre::Table)
+                .col(BookGenre::GenreId)
+                .to_owned()
+        )
+        .await?;
+
+        manager.create_index(
+            Index::create()
+                .name("idx_book_author_author_id")
+                .table(BookAuthor::Table)
+                .col(BookAuthor::AuthorId)
+                .to_owned()
+        )
+        .await?;
+
+        manager.create_index(
+            Index::create()
+                .name("idx_book_tag_tag_id")
+                .table(BookTag::Table)
+                .col(BookTag::TagId)
+                .to_owned()
+        )
+        .await?;
+
+        manager.create_index(
+            Index::create()
+                .name("idx_book_series_id")
+                .table(Book::Table)
+                .col(Book::SeriesId)
                 .to_owned()
         )
         .await
@@ -283,15 +319,6 @@ impl MigrationTrait for Migration {
 
         manager
             .drop_table(Table::drop().table(BookTag::Table).to_owned())
-            .await?;
-
-        manager
-            .drop_index(
-                Index::drop()
-                    .table(Chapter::Table)
-                    .name("idx-index-book_id")
-                    .to_owned()
-            )
             .await
     }
 }
