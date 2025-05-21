@@ -1,10 +1,11 @@
 use actix_web::{dev::PeerAddr, web, HttpRequest, HttpResponse, Responder, ResponseError};
+use serde_qs::actix::QsQuery;
 
 use crate::{client::ServiceClient, schema::{Author, BookSchema, GetListSchema, SearchQuery}};
 
 pub async fn get_books(
     client: web::Data<ServiceClient>,
-    query: web::Query<GetListSchema>,
+    query: QsQuery<GetListSchema>,
 ) -> impl Responder {
     match client.get_books_list(&query).await {
         Ok(books) => HttpResponse::Ok().json(books),

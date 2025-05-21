@@ -31,8 +31,15 @@ impl ServiceClient {
     }
 
     pub async fn get_books_list(&self, query: &GetListSchema) -> Result<PaginationSchema<BookSchema>, ApiError> {
-        let url = format!("{}/api/v1/books", self.config.book_catalog.url);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(query)).await
+        let query_string = match serde_qs::to_string(query) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to get query string from GetListSchema: {:?}", e);
+                return Err(ApiError::ValidationError)
+            },
+        };
+        let url = format!("{}/api/v1/books?{}", self.config.book_catalog.url, query_string);
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
     }
     
     pub async fn get_book(&self, id: u64) -> Result<BookFullSchema, ApiError> {
@@ -152,6 +159,7 @@ impl ServiceClient {
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
     }
 
+    #[inline]
     async fn make_request<T, Q>(&self, url: &str, service_name: &str, method: reqwest::Method, query: Option<&Q>) -> Result<T, ApiError>
     where
         T: for<'de> serde::Deserialize<'de>,

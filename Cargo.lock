@@ -491,6 +491,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde-aux",
+ "serde_qs",
  "telemetry",
  "thiserror 2.0.12",
  "tokio",
