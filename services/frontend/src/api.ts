@@ -7,19 +7,39 @@ export async function fetchBooks(params: {
     target_id?: number,
     page?: number,
     page_size?: number,
-    order_by?: string
+    order_by?: string,
+    genres_include?: number[],
+    genres_exclude?: number[],
+    tags_include?: number[],
+    tags_exclude?: number[],
+    statuses?: number[],
 } = {}): Promise<BooksListPage> {
-    const queryParams = new URLSearchParams();
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.page_size) queryParams.append('page_size', params.page_size.toString());
-    if (params.order_by) queryParams.append('order_by', params.order_by);
+    const queryParts: string[] = [];
+
+    if (params.page) queryParts.push(`page=${params.page}`);
+    if (params.page_size) queryParts.push(`page_size=${params.page_size}`);
+    if (params.order_by) queryParts.push(`order_by=${encodeURIComponent(params.order_by)}`);
     if (params.target && params.target_id) {
-        queryParams.append('target', params.target);
-        queryParams.append('target_id', params.target_id.toString());
+        queryParts.push(`target=${params.target}&target_id=${params.target_id}`);
     }
-    
-    const response = await fetch(`${API_BASE_URL}/books?${queryParams.toString()}`);
-    
+
+    const addArrayParams = (key: string, values?: number[]) => {
+        if (values?.length) {
+            values.forEach(v => queryParts.push(`${key}[]=${v}`));
+        }
+    };
+
+    addArrayParams('genres_include', params.genres_include);
+    addArrayParams('genres_exclude', params.genres_exclude);
+    addArrayParams('tags_include', params.tags_include);
+    addArrayParams('tags_exclude', params.tags_exclude);
+    addArrayParams('statuses', params.statuses);
+
+    const queryString = queryParts.join('&');
+    const url = `${API_BASE_URL}/books?${queryString}`;
+
+    const response = await fetch(url);
+
     if (!response.ok) {
         throw new Error(`Failed to fetch books: ${response.status} ${response.statusText}`);
     }
