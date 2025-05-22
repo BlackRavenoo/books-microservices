@@ -76,7 +76,7 @@
                         <span class="meta-label">Авторы:</span>
                         <div class="meta-list">
                             {#each book.authors as author}
-                                <span class="meta-tag">{author.name}</span>
+                                <a href="/author/{author.id}" class="meta-tag">{author.name}</a>
                             {/each}
                         </div>
                     </div>
@@ -190,6 +190,16 @@
         padding: 0.25rem 0.75rem;
         border-radius: 1rem;
         font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    a.meta-tag:hover {
+        background-color: var(--primary-color);
+        color: white;
+        cursor: pointer;
+        transform: translateY(-2px);
+        box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
     }
     
     .book-chapters {
