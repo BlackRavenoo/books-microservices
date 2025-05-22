@@ -1,382 +1,330 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchAuthorDetails, fetchBooks } from '../api';
-    import type { AuthorWithCover, Book } from '../types';
-    import { authStore } from '../store/authStore';
-    import { link } from 'svelte-routing';
-    import BookCard from '../components/BookCard.svelte';
+    import { fetchAuthorDetails, updateAuthor } from '../api';
     
     export let id: string;
     
-    let author: AuthorWithCover | null = null;
-    let books: Book[] = [];
-    let loading = true;
-    let loadingBooks = true;
-    let error = false;
-    let booksError = false;
-
-    let user = null;
-    let isAdmin = false;
+    let name = "";
+    let coverFile: File | null = null;
+    let coverPreview: string | null = null;
+    let originalCoverUrl: string | null = null;
     
-    let currentPage = 1;
-    let pageSize = 12;
-    let totalBooks = 0;
-    let totalPages = 0;
-    let sortOrder = "created_at";
-
-    const sortOptions = [
-        { value: "created_at", label: "Дата добавления" },
-        { value: "chap_count", label: "Количество глав" },
-        { value: "name_asc", label: "Название (А-Я)" },
-        { value: "name_desc", label: "Название (Я-А)" }
-    ];
-
-    const unsubscribe = authStore.subscribe(state => {
-        user = state.user;
-        isAdmin = state.user?.roles?.includes('admin') || false;
-    });
+    let isLoading = true;
+    let isSubmitting = false;
+    let error: string | null = null;
+    let success = false;
     
     onMount(async () => {
+        isLoading = true;
         try {
-            author = await fetchAuthorDetails(id);
-        } catch (e) {
-            error = true;
+            const author = await fetchAuthorDetails(id.toString());
+            if (!author) {
+                throw new Error('Автор не найден');
+            }
+            
+            name = author.name;
+            originalCoverUrl = author.cover;
+            coverPreview = author.cover;
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : 'Ошибка при загрузке данных автора';
         } finally {
-            loading = false;
-        }
-        
-        await loadBooks();
-        
-        return () => {
-            unsubscribe();
+            isLoading = false;
         }
     });
     
-    async function loadBooks() {
-        loadingBooks = true;
-        booksError = false;
+    function handleCoverChange(event: Event) {
+        const input = event.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) {
+            coverFile = null;
+            coverPreview = originalCoverUrl;
+            return;
+        }
+        
+        coverFile = input.files[0];
+        
+        const reader = new FileReader();
+        reader.onload = e => {
+            coverPreview = e.target?.result as string;
+        };
+        reader.readAsDataURL(coverFile);
+    }
+    
+    async function handleSubmit() {
+        if (!name) {
+            error = 'Имя автора обязательно';
+            return;
+        }
+        
+        error = null;
+        isSubmitting = true;
         
         try {
-            const response = await fetchBooks({
-                target: "author",
-                target_id: parseInt(id),
-                page: currentPage,
-                page_size: pageSize,
-                order_by: sortOrder
-            });
-            
-            books = response.books || [];
-            totalBooks = response.total || 0;
-            totalPages = Math.ceil(totalBooks / pageSize);
-        } catch (e) {
-            booksError = true;
-            books = [];
+            await updateAuthor(id, coverFile, { name });
+            success = true;
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : 'Произошла ошибка при обновлении автора';
         } finally {
-            loadingBooks = false;
+            isSubmitting = false;
         }
     }
     
-    function changePage(newPage: number) {
-        if (newPage >= 1 && newPage <= totalPages) {
-            currentPage = newPage;
-            loadBooks();
-        }
-    }
-    
-    function handleSortChange() {
-        currentPage = 1;
-        loadBooks();
+    function resetForm() {
+        success = false;
+        error = null;
+        window.location.reload();
     }
 </script>
 
 <div class="container">
-    {#if loading}
-        <div class="loading">Загрузка...</div>
-    {:else if error || !author}
-        <div class="error">Произошла ошибка при загрузке данных автора</div>
+    <h1 class="form-title">Редактирование автора</h1>
+    
+    {#if isLoading}
+        <div class="loading">Загрузка данных автора...</div>
+    {:else if error}
+        <div class="error-message">{error}</div>
+    {:else if success}
+        <div class="success-message">
+            <h2>Автор успешно обновлен!</h2>
+            <div class="action-buttons">
+                <button class="action-button" on:click={resetForm}>
+                    Продолжить редактирование
+                </button>
+                <a href={`/author/${id}`} class="action-button">
+                    Перейти к странице автора
+                </a>
+            </div>
+        </div>
     {:else}
-        <div class="author-header">
-            <div class="author-avatar-container">
-                <img src={author.cover} alt={author.name} class="author-avatar" />
-                
-                {#if isAdmin}
-                    <div class="admin-buttons">
-                        <a href={`/admin/edit-author/${author.id}`} class="admin-icon-btn" title="Редактировать автора">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </a>
-                    </div>
-                {/if}
-            </div>
-            
-            <div class="author-info">
-                <h1 class="author-name">{author.name}</h1>
-                
-                <div class="author-stats">
-                    <div class="stat-item">
-                        <span class="stat-value">{totalBooks}</span>
-                        <span class="stat-label">книг</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="author-books">
-            <div class="section-header">
-                <h2 class="section-title">Книги автора</h2>
-                
-                <div class="sort-control">
-                    <label for="sort-order">Сортировать по:</label>
-                    <select id="sort-order" bind:value={sortOrder} on:change={handleSortChange}>
-                        {#each sortOptions as option}
-                            <option value={option.value}>{option.label}</option>
-                        {/each}
-                    </select>
+        <form on:submit|preventDefault={handleSubmit} class="author-form">
+            <div class="form-group cover-upload">
+                <label for="cover">Аватар автора</label>
+                <div class="upload-container">
+                    {#if coverPreview}
+                        <div class="cover-preview">
+                            <img src={coverPreview} alt="Preview" />
+                            <button type="button" class="remove-cover" on:click={() => {
+                                coverFile = null;
+                                coverPreview = originalCoverUrl;
+                            }}>×</button>
+                        </div>
+                    {:else}
+                        <div class="upload-placeholder">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2zM7.07 18.28c.43-.9 3.05-1.78 4.93-1.78s4.5.88 4.93 1.78A7.893 7.893 0 0 1 12 20c-1.86 0-3.57-.64-4.93-1.72zm11.29-1.45c-1.43-1.74-4.9-2.33-6.36-2.33s-4.93.59-6.36 2.33A7.95 7.95 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 1.82-.62 3.49-1.64 4.83zM12 6c-1.94 0-3.5 1.56-3.5 3.5S10.06 13 12 13s3.5-1.56 3.5-3.5S13.94 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z"/></svg>
+                            <span>Нажмите для выбора файла</span>
+                        </div>
+                    {/if}
+                    <input 
+                        type="file" 
+                        id="cover" 
+                        accept="image/*" 
+                        on:change={handleCoverChange} 
+                        class="file-input" 
+                    />
                 </div>
             </div>
             
-            {#if loadingBooks}
-                <div class="loading">Загрузка книг...</div>
-            {:else if booksError}
-                <div class="error">Не удалось загрузить книги автора</div>
-            {:else if books.length === 0}
-                <div class="books-placeholder">
-                    У этого автора пока нет книг
-                </div>
-            {:else}
-                <div class="books-grid">
-                    {#each books as book (book.id)}
-                        <BookCard {book} />
-                    {/each}
-                </div>
-                
-                {#if totalPages > 1}
-                    <div class="pagination">
-                        <button class="page-btn" disabled={currentPage === 1} on:click={() => changePage(1)}>
-                            &laquo;
-                        </button>
-                        <button class="page-btn" disabled={currentPage === 1} on:click={() => changePage(currentPage - 1)}>
-                            &lsaquo;
-                        </button>
-                        
-                        {#each Array(totalPages > 5 ? 5 : totalPages) as _, i}
-                            {@const pageNum = totalPages > 5 
-                                ? Math.max(1, Math.min(currentPage - 2 + i, totalPages))
-                                : i + 1}
-                            {#if (pageNum >= currentPage - 2 && pageNum <= currentPage + 2) || 
-                                  (totalPages <= 5) ||
-                                  (currentPage <= 3 && pageNum <= 5) ||
-                                  (currentPage >= totalPages - 2 && pageNum >= totalPages - 4)}
-                                <button 
-                                    class="page-btn" 
-                                    class:active={currentPage === pageNum} 
-                                    on:click={() => changePage(pageNum)}
-                                >
-                                    {pageNum}
-                                </button>
-                            {/if}
-                        {/each}
-                        
-                        <button class="page-btn" disabled={currentPage === totalPages} on:click={() => changePage(currentPage + 1)}>
-                            &rsaquo;
-                        </button>
-                        <button class="page-btn" disabled={currentPage === totalPages} on:click={() => changePage(totalPages)}>
-                            &raquo;
-                        </button>
-                    </div>
-                {/if}
-            {/if}
-        </div>
+            <div class="form-group">
+                <label for="name">Имя</label>
+                <input 
+                    type="text" 
+                    id="name" 
+                    bind:value={name} 
+                    placeholder="Введите имя автора" 
+                    required
+                />
+            </div>
+            
+            <div class="form-actions">
+                <button 
+                    type="submit" 
+                    class="submit-button" 
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
+                </button>
+            </div>
+        </form>
     {/if}
 </div>
 
 <style>
     .container {
         width: 100%;
-        max-width: 1200px;
+        max-width: 800px;
         margin: 0 auto;
         padding: 2rem 1rem;
     }
     
-    .loading, .error {
+    .form-title {
+        margin-bottom: 2rem;
         text-align: center;
-        padding: 2rem;
-        color: var(--text-muted);
-    }
-    
-    .error {
-        color: #ef4444;
-    }
-    
-    .author-header {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        margin-bottom: 3rem;
-    }
-    
-    .author-avatar-container {
-        position: relative;
-        flex-shrink: 0;
-    }
-    
-    .author-avatar {
-        width: 180px;
-        height: 180px;
-        border-radius: 50%;
-        object-fit: cover;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    
-    .author-info {
-        flex: 1;
-    }
-    
-    .author-name {
-        font-size: 2.5rem;
-        margin-bottom: 1.5rem;
+        font-size: 1.75rem;
         font-weight: 700;
     }
     
-    .author-stats {
-        display: flex;
-        gap: 2rem;
+    .loading, .error-message {
+        text-align: center;
+        padding: 2rem;
+        border-radius: 0.5rem;
     }
     
-    .stat-item {
+    .loading {
+        color: var(--text-muted);
+    }
+    
+    .error-message {
+        color: #ef4444;
+        background-color: rgba(239, 68, 68, 0.1);
+    }
+    
+    .success-message {
+        color: #10b981;
+        background-color: rgba(16, 185, 129, 0.1);
         display: flex;
         flex-direction: column;
         align-items: center;
+        gap: 1.5rem;
+        padding: 2rem;
+        border-radius: 0.5rem;
     }
-    
-    .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-    
-    .stat-label {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-    
-    .admin-buttons {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        display: flex;
-        gap: 0.5rem;
-    }
-    
-    .admin-icon-btn {
-        background-color: var(--primary-color);
-        border: none;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-    
-    .admin-icon-btn:hover {
-        background-color: var(--secondary-color);
-    }
-    
-    .section-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
-    
-    .section-title {
-        font-size: 1.5rem;
-        font-weight: 700;
+
+    .success-message h2 {
         margin: 0;
     }
     
-    .sort-control {
+    .action-buttons {
         display: flex;
-        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .author-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
         gap: 0.5rem;
     }
     
-    .sort-control select {
-        padding: 0.5rem;
-        border-radius: 4px;
+    label {
+        font-weight: 600;
+        color: var(--text-light);
+    }
+    
+    input[type="text"] {
+        padding: 0.75rem;
         border: 1px solid var(--border-color);
-        background-color: var(--light-bg);
-        color: var(--text-primary);
-    }
-    
-    .books-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 2rem;
-    }
-    
-    .books-placeholder {
-        padding: 2rem;
-        text-align: center;
-        background-color: var(--light-bg);
         border-radius: 0.5rem;
-        color: var(--text-muted);
+        background-color: var(--light-bg);
+        color: var(--text-light);
     }
     
-    .pagination {
+    .cover-upload {
+        margin-bottom: 1rem;
+    }
+    
+    .upload-container {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        border: 2px dashed var(--border-color);
+        border-radius: 50%;
+        cursor: pointer;
+        overflow: hidden;
+    }
+    
+    .upload-placeholder {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        margin-top: 2rem;
+        height: 100%;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 1rem;
     }
     
-    .page-btn {
-        width: 36px;
-        height: 36px;
+    .upload-placeholder svg {
+        margin-bottom: 0.5rem;
+        height: 48px;
+        width: 48px;
+    }
+    
+    .file-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+    
+    .cover-preview {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+    
+    .cover-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .remove-cover {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        border: none;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
-        border: 1px solid var(--border-color);
-        background-color: var(--light-bg);
-        color: var(--text-primary);
         cursor: pointer;
-        transition: all 0.2s;
+        font-size: 16px;
     }
     
-    .page-btn:hover:not(:disabled) {
-        background-color: var(--primary-color-light);
+    .form-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: center;
     }
     
-    .page-btn.active {
+    .action-button, .submit-button {
+        padding: 0.75rem 2rem;
         background-color: var(--primary-color);
         color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
     }
     
-    .page-btn:disabled {
-        opacity: 0.5;
+    .action-button:hover, .submit-button:hover {
+        background-color: var(--secondary-color);
+    }
+
+    .action-button:focus, .submit-button:focus {
+        outline: 2px solid var(--focus-color, #4299e1);
+        outline-offset: 2px;
+    }
+    
+    .submit-button:disabled {
+        background-color: #ccc;
         cursor: not-allowed;
-    }
-    
-    @media (max-width: 768px) {
-        .author-header {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .author-avatar {
-            margin-bottom: 1.5rem;
-        }
-        
-        .author-stats {
-            justify-content: center;
-        }
-        
-        .section-header {
-            flex-direction: column;
-            gap: 1rem;
-        }
     }
 </style>

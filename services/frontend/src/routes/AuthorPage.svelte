@@ -1,18 +1,34 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchAuthorDetails } from '../api';
-    import type { AuthorWithCover } from '../types';
+    import { fetchAuthorDetails, fetchBooks } from '../api';
+    import type { AuthorWithCover, BookPreview } from '../types';
     import { authStore } from '../store/authStore';
-    import { link } from 'svelte-routing';
+    import BookCard from '../components/BookCard.svelte';
     
     export let id: string;
     
     let author: AuthorWithCover | null = null;
+    let books: BookPreview[] = [];
     let loading = true;
+    let loadingBooks = true;
     let error = false;
+    let booksError = false;
 
     let user = null;
     let isAdmin = false;
+    
+    let currentPage = 1;
+    let pageSize = 24;
+    let totalBooks = 0;
+    let totalPages = 0;
+    let sortOrder = "created_at";
+
+    const sortOptions = [
+        { value: "created_at", label: "Дата добавления" },
+        { value: "chap_count", label: "Количество глав" },
+        { value: "name_asc", label: "Название (А-Я)" },
+        { value: "name_desc", label: "Название (Я-А)" }
+    ];
 
     const unsubscribe = authStore.subscribe(state => {
         user = state.user;
@@ -28,12 +44,50 @@
             loading = false;
         }
         
+        await loadBooks();
+        
         return () => {
             unsubscribe();
         }
     });
+    
+    async function loadBooks() {
+        loadingBooks = true;
+        booksError = false;
+        
+        try {
+            const response = await fetchBooks({
+                target: "author",
+                target_id: parseInt(id),
+                page: currentPage,
+                page_size: pageSize,
+                order_by: sortOrder
+            });
+            
+            books = response.items;
+            totalBooks = response.total_items;
+            totalPages = response.max_page;
+        } catch (e) {
+            booksError = true;
+            books = [];
+        } finally {
+            loadingBooks = false;
+        }
+    }
+    
+    function changePage(newPage: number) {
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            loadBooks();
+        }
+    }
+    
+    function handleSortChange() {
+        currentPage = 1;
+        loadBooks();
+    }
 </script>
-  
+
 <div class="container">
     {#if loading}
         <div class="loading">Загрузка...</div>
@@ -57,25 +111,83 @@
                 <h1 class="author-name">{author.name}</h1>
                 
                 <div class="author-stats">
-                    <!-- This section can be expanded once API supports author stats -->
                     <div class="stat-item">
-                        <span class="stat-value">0</span>
+                        <span class="stat-value">{totalBooks}</span>
                         <span class="stat-label">книг</span>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Books by author section - placeholder for when this functionality is added -->
+
         <div class="author-books">
-            <h2 class="section-title">Книги автора</h2>
-            <div class="books-placeholder">
-                Книги этого автора скоро появятся здесь
+            <div class="section-header">
+                <h2 class="section-title">Книги автора</h2>
+                
+                <div class="sort-control">
+                    <label for="sort-order">Сортировать по:</label>
+                    <select id="sort-order" bind:value={sortOrder} on:change={handleSortChange}>
+                        {#each sortOptions as option}
+                            <option value={option.value}>{option.label}</option>
+                        {/each}
+                    </select>
+                </div>
             </div>
+            
+            {#if loadingBooks}
+                <div class="loading">Загрузка книг...</div>
+            {:else if booksError}
+                <div class="error">Не удалось загрузить книги автора</div>
+            {:else if books.length === 0}
+                <div class="books-placeholder">
+                    У этого автора пока нет книг
+                </div>
+            {:else}
+                <div class="books-grid">
+                    {#each books as book (book.id)}
+                        <BookCard {book} />
+                    {/each}
+                </div>
+                
+                {#if totalPages > 1}
+                    <div class="pagination">
+                        <button class="page-btn" disabled={currentPage === 1} on:click={() => changePage(1)}>
+                            &laquo;
+                        </button>
+                        <button class="page-btn" disabled={currentPage === 1} on:click={() => changePage(currentPage - 1)}>
+                            &lsaquo;
+                        </button>
+                        
+                        {#each Array(totalPages > 5 ? 5 : totalPages) as _, i}
+                            {@const pageNum = totalPages > 5 
+                                ? Math.max(1, Math.min(currentPage - 2 + i, totalPages))
+                                : i + 1}
+                            {#if (pageNum >= currentPage - 2 && pageNum <= currentPage + 2) || 
+                                  (totalPages <= 5) ||
+                                  (currentPage <= 3 && pageNum <= 5) ||
+                                  (currentPage >= totalPages - 2 && pageNum >= totalPages - 4)}
+                                <button 
+                                    class="page-btn" 
+                                    class:active={currentPage === pageNum} 
+                                    on:click={() => changePage(pageNum)}
+                                >
+                                    {pageNum}
+                                </button>
+                            {/if}
+                        {/each}
+                        
+                        <button class="page-btn" disabled={currentPage === totalPages} on:click={() => changePage(currentPage + 1)}>
+                            &rsaquo;
+                        </button>
+                        <button class="page-btn" disabled={currentPage === totalPages} on:click={() => changePage(totalPages)}>
+                            &raquo;
+                        </button>
+                    </div>
+                {/if}
+            {/if}
         </div>
     {/if}
 </div>
-  
+
 <style>
     .container {
         width: 100%;
@@ -171,14 +283,37 @@
         background-color: var(--secondary-color);
     }
     
-    .author-books {
-        margin-top: 3rem;
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
     }
     
     .section-title {
         font-size: 1.5rem;
         font-weight: 700;
-        margin-bottom: 1.5rem;
+        margin: 0;
+    }
+    
+    .sort-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .sort-control select {
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background-color: var(--light-bg);
+        color: var(--text-primary);
+    }
+    
+    .books-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 2rem;
     }
     
     .books-placeholder {
@@ -187,6 +322,41 @@
         background-color: var(--light-bg);
         border-radius: 0.5rem;
         color: var(--text-muted);
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+    }
+    
+    .page-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+        background-color: var(--light-bg);
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .page-btn:hover:not(:disabled) {
+        background-color: var(--primary-color-light);
+    }
+    
+    .page-btn.active {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     
     @media (max-width: 768px) {
@@ -201,6 +371,11 @@
         
         .author-stats {
             justify-content: center;
+        }
+        
+        .section-header {
+            flex-direction: column;
+            gap: 1rem;
         }
     }
 </style>
