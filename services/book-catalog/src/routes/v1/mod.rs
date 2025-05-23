@@ -1,9 +1,13 @@
 use actix_web::web;
-use crud::{create_author, create_book, get_author, get_book, get_books, get_constants, update_author, update_book};
+use authors::{create_author, get_author, update_author};
+use books::{create_book, get_book, get_books, update_book};
+use constants::get_constants;
 use search::{search_authors, search_books};
 
-mod crud;
+mod constants;
 mod search;
+mod books;
+mod authors;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
