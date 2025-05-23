@@ -8,8 +8,6 @@ pub struct S3StorageBackend {
     bucket: Box<Bucket>,
 }
 
-// TODO: image_type(jpg, png...)
-
 impl S3StorageBackend {
     pub fn new(config: S3Settings) -> Self {
         let bucket = Bucket::new(
@@ -30,40 +28,61 @@ impl S3StorageBackend {
         }
     }
 
-    fn generate_key(&self, id: u32, image_id: Uuid) -> String {
-        format!("{}/{}.jpg", id, image_id)
+    fn generate_key(&self, storage_id: u32, object_id: Uuid, extension: &str) -> String {
+        format!("{}/{}.{}", storage_id, object_id, extension)
     }
 
     pub async fn save(
         &self,
-        id: u32,
-        image_id: Uuid,
-        data: Vec<u8>
-    ) -> anyhow::Result<()> {
-        let key = self.generate_key(id, image_id);
+        storage_id: u32,
+        object_id: Uuid,
+        data: Vec<u8>,
+        content_type: &str,
+        extension: &str
+    ) -> anyhow::Result<String> {
+        let key = self.generate_key(storage_id, object_id, extension);
         
-        let content_type = "image/jpeg".to_string();
-        
-        let data = self.bucket
-            .put_object_with_content_type(&key, &data, &content_type)
+        let response = self.bucket
+            .put_object_with_content_type(&key, &data, content_type)
             .await?;
 
-        let code = data.status_code();
+        let code = response.status_code();
         
         if code != 200 {
             let msg = format!("Failed to upload object, status code: {}", code);
             return Err(anyhow::anyhow!(msg));
         }
 
-        Ok(())
+        Ok(format!("{}/{}", self.bucket.url(), key))
+    }
+
+    pub async fn get(&self, url: &str) -> anyhow::Result<Vec<u8>> {
+        let key = url.split(&self.bucket.url())
+            .nth(1)
+            .ok_or_else(|| anyhow::anyhow!("Invalid URL format"))?
+            .trim_start_matches('/');
+
+        let response = self.bucket
+            .get_object(key)
+            .await?;
+
+        let code = response.status_code();
+        
+        if code != 200 {
+            let msg = format!("Failed to get object, status code: {}", code);
+            return Err(anyhow::anyhow!(msg));
+        }
+
+        Ok(response.bytes().to_vec())
     }
 
     pub async fn delete(
         &self,
         id: u32,
         image_id: Uuid,
+        extension: &str,
     ) -> anyhow::Result<()> {
-        let key = self.generate_key(id, image_id);
+        let key = self.generate_key(id, image_id, extension);
 
         let data = self.bucket
             .delete_object(&key)
@@ -91,15 +110,24 @@ impl S3StorageBackend {
         None
     }
 
-    pub fn get_url(
+    pub fn get_object_url(
         &self,
-        id: u32,
-        image_id: Uuid
+        storage_id: u32,
+        object_id: Uuid,
+        extension: &str
     ) -> String {
         format!(
             "{}/{}",
             self.bucket.url(),
-            self.generate_key(id, image_id)
+            self.generate_key(storage_id, object_id, extension)
         )
-    }  
+    }
+
+    pub fn get_image_url(
+        &self,
+        storage_id: u32,
+        image_id: Uuid
+    ) -> String {
+        self.get_object_url(storage_id, image_id, "jpg")
+    }
 }

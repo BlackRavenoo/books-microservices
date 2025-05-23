@@ -302,7 +302,7 @@ pub async fn create_book(
 
     let id = Uuid::new_v4();
 
-    let url = storage.get_url(storage_id, id);
+    let url = storage.get_image_url(storage_id, id);
 
     let book = book::ActiveModel {
         title: Set(fields.title),
@@ -374,7 +374,7 @@ pub async fn create_book(
         }
     }
 
-    match storage.save(storage_id, id, image).await {
+    match storage.save(storage_id, id, image, "image/jpeg", "jpg").await {
         Ok(_) => (),
         Err(e) => {
             tracing::error!("Failed to upload cover {:?}", e);
@@ -465,7 +465,7 @@ pub async fn update_book(
             },
         };
 
-        if storage.save(StorageId::BookCover as u32, cover_id, image).await.is_err() {
+        if storage.save(StorageId::BookCover as u32, cover_id, image, "image/jpeg", "jpg").await.is_err() {
             return HttpResponse::InternalServerError().finish()
         };
     }
@@ -701,7 +701,7 @@ pub async fn update_author(
             },
         };
 
-        if storage.save(StorageId::AuthorCover as u32, cover_id, image).await.is_err() {
+        if storage.save(StorageId::AuthorCover as u32, cover_id, image, "image/jpeg", "jpg").await.is_err() {
             return HttpResponse::InternalServerError().finish()
         };
     }
@@ -748,7 +748,7 @@ pub async fn create_author(
 
     let id = Uuid::new_v4();
 
-    let url = storage.get_url(storage_id, id);
+    let url = storage.get_image_url(storage_id, id);
 
     let author = author::ActiveModel {
         name: Set(name),
@@ -772,7 +772,7 @@ pub async fn create_author(
         },
     };
 
-    match storage.save(storage_id, id, image).await {
+    match storage.save(storage_id, id, image, "image/jpeg", "jpg").await {
         Ok(_) => (),
         Err(e) => {
             tracing::error!("Failed to upload cover {:?}", e);
