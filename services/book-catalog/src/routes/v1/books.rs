@@ -262,7 +262,7 @@ pub async fn get_book(
             }
         },
         Ok(_) => {
-            HttpResponse::BadRequest().body("Book not found!")
+            HttpResponse::NotFound().body("Book not found!")
         }
         Err(e) => {
             tracing::error!("Failed to select book: {:?}", e);

@@ -42,12 +42,21 @@ impl S3StorageBackend {
     ) -> anyhow::Result<String> {
         let key = self.generate_key(storage_id, object_id, extension);
         
+        self.save_with_custom_key(&key, content_type, data).await
+    }
+
+    pub async fn save_with_custom_key(
+        &self,
+        key: &str,
+        content_type: &str,
+        data: Vec<u8>
+    ) -> anyhow::Result<String> {
         let response = self.bucket
             .put_object_with_content_type(&key, &data, content_type)
             .await?;
 
         let code = response.status_code();
-        
+    
         if code != 200 {
             let msg = format!("Failed to upload object, status code: {}", code);
             return Err(anyhow::anyhow!(msg));
@@ -62,6 +71,10 @@ impl S3StorageBackend {
             .ok_or_else(|| anyhow::anyhow!("Invalid URL format"))?
             .trim_start_matches('/');
 
+        self.get_by_key(key).await
+    }
+
+    pub async fn get_by_key(&self, key: &str) -> anyhow::Result<Vec<u8>> {
         let response = self.bucket
             .get_object(key)
             .await?;
@@ -69,7 +82,7 @@ impl S3StorageBackend {
         let code = response.status_code();
         
         if code != 200 {
-            let msg = format!("Failed to get object, status code: {}", code);
+            let msg = format!("Failed to get object by key '{}', status code: {}", key, code);
             return Err(anyhow::anyhow!(msg));
         }
 
@@ -84,6 +97,10 @@ impl S3StorageBackend {
     ) -> anyhow::Result<()> {
         let key = self.generate_key(id, image_id, extension);
 
+        self.delete_by_key(&key).await
+    }
+
+    pub async fn delete_by_key(&self,key: &str) -> anyhow::Result<()> {
         let data = self.bucket
             .delete_object(&key)
             .await?;
@@ -97,6 +114,15 @@ impl S3StorageBackend {
         }
 
         Ok(())
+    }
+
+    pub async fn delete_by_url(&self, url: &str) -> anyhow::Result<()> {
+        let key = url.split(&self.bucket.url())
+            .nth(1)
+            .ok_or_else(|| anyhow::anyhow!("Invalid URL format"))?
+            .trim_start_matches('/');
+
+        self.delete_by_key(key).await
     }
 
     pub fn extract_uuid_from_url(&self, url: &str) -> Option<Uuid> {

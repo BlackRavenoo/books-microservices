@@ -1,6 +1,6 @@
 use actix_multipart::form::{json::Json, tempfile::TempFile, MultipartForm};
 use bincode::{Decode, Encode};
-use sea_orm::{DerivePartialModel, FromQueryResult};
+use sea_orm::{prelude::DateTimeWithTimeZone, DerivePartialModel, FromQueryResult};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::entity::{book::{self, BookStatus}, tag, genre};
@@ -121,6 +121,24 @@ pub struct UpdateAuthorForm {
     pub fields: Json<UpdateAuthorSchema>
 }
 
+#[derive(Deserialize)]
+pub struct CreateChapterFields {
+    pub name: String,
+    pub content: serde_json::Value,
+    pub index: i16,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateChapterFields {
+    pub name: Option<String>,
+    pub content: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+pub struct GetChapterSchema {
+    pub number: i64
+}
+
 // Output schema
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
@@ -205,4 +223,14 @@ impl Serialize for BookStatus {
         
         status_struct.serialize(serializer)
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChapterFullSchema {
+    pub id: i64,
+    pub index: i16,
+    pub name: String,
+    pub content: serde_json::Value,
+    pub book_id: i32,
+    pub created_at: DateTimeWithTimeZone,
 }

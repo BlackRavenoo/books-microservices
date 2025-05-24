@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
-use cache::{cache::HybridCache, expiry::Expiration};
+use cache::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
 use sea_orm::{DatabaseConnection, EntityTrait, Iterable};
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 
 pub async fn get_constants(
     db: web::Data<DatabaseConnection>,
-    cache: web::Data<HybridCache<String, ConstantsSchema>>
+    cache: web::Data<HybridCache<String, ConstantsSchema, BincodeSerializer<ConstantsSchema>>>
 ) -> impl Responder {
     match cache.get(&String::new(), Expiration::Minutes(10)).await {
         Ok(Some(consts)) => return HttpResponse::Ok().json(consts),

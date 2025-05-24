@@ -8,7 +8,7 @@ pub struct Model {
     pub index: i16,
     pub book_id: i32,
     pub name: String,
-    pub link: String,
+    pub key: String,
     pub created_at: DateTimeWithTimeZone
 }
 

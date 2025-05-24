@@ -44,7 +44,7 @@ pub enum Chapter {
     Index,
     BookId,
     Name,
-    Link,
+    Key,
     CreatedAt
 }
 
@@ -142,7 +142,7 @@ impl MigrationTrait for Migration {
                 .col(small_integer(Chapter::Index))
                 .col(integer(Chapter::BookId))
                 .col(string(Chapter::Name).not_null())
-                .col(string(Chapter::Link).not_null())
+                .col(string(Chapter::Key).not_null())
                 .col(timestamp_with_time_zone(Chapter::CreatedAt).not_null().default(Expr::current_timestamp()))
                 .to_owned()
         )
