@@ -132,10 +132,11 @@ pub struct CreateChapterFields {
 pub struct UpdateChapterFields {
     pub name: Option<String>,
     pub content: Option<serde_json::Value>,
+    pub index: Option<i16>
 }
 
 #[derive(Deserialize)]
-pub struct GetChapterSchema {
+pub struct ChapterSchema {
     pub number: i64
 }
 

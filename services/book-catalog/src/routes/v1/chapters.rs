@@ -1,8 +1,8 @@
 use actix_web::{web, HttpResponse, Responder};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, TransactionTrait};
 use uuid::Uuid;
 
-use crate::{entity::chapter, schema::{ChapterFullSchema, CreateChapterFields, GetChapterSchema}, storage::{s3::S3StorageBackend, StorageId}};
+use crate::{entity::chapter, schema::{ChapterFullSchema, CreateChapterFields, ChapterSchema, UpdateChapterFields}, storage::{s3::S3StorageBackend, StorageId}};
 
 pub async fn create_chapter(
     db: web::Data<DatabaseConnection>,
@@ -76,10 +76,10 @@ pub async fn get_chapter(
     db: web::Data<DatabaseConnection>,
     storage: web::Data<S3StorageBackend>,
     path: web::Path<i32>,
-    query: web::Query<GetChapterSchema>
+    query: web::Query<ChapterSchema>
 ) -> impl Responder {
     let book_id = path.into_inner();
-    let chapter_number = query.into_inner().number;
+    let chapter_number = query.number;
 
     let chapter = match chapter::Entity::find()
         .filter(chapter::Column::BookId.eq(book_id))
@@ -128,4 +128,102 @@ pub async fn get_chapter(
     };
 
     HttpResponse::Ok().json(response)
+}
+
+pub async fn update_chapter(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    path: web::Path<i32>,
+    form: web::Json<UpdateChapterFields>,
+    query: web::Query<ChapterSchema>
+) -> impl Responder {
+    let book_id = path.into_inner();
+    let chapter_number = query.number;
+    let fields = form.into_inner();
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    let chapter = match chapter::Entity::find()
+        .filter(chapter::Column::BookId.eq(book_id))
+        .filter(chapter::Column::Index.eq(chapter_number))
+        .one(&transaction)
+        .await {
+            Ok(Some(chapter)) => chapter,
+            Ok(None) => return HttpResponse::NotFound().finish(),
+            Err(e) => {
+                tracing::error!("Failed to get chapter: {:?}", e);
+                return HttpResponse::InternalServerError().finish();
+            }
+        };
+
+    let cur_index = chapter.index;
+    let content_key = chapter.key.clone();
+
+    let mut chapter_active: chapter::ActiveModel = chapter.into();
+
+    if let Some(content) = fields.content {
+        let json_string = match serde_json::to_string_pretty(&content) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to serialize content: {:?}", e);
+                return HttpResponse::BadRequest().finish()
+            },
+        };
+        let data = json_string.into_bytes();
+
+        if let Err(e) = storage.save_with_custom_key(&content_key, "application/json", data).await {
+            tracing::error!("Failed to update chapter content in S3: {:?}", e);
+            return HttpResponse::InternalServerError().finish()
+        }
+    }
+
+    if let Some(name) = fields.name {
+        chapter_active.name = Set(name);
+    }
+
+    if let Some(new_index) = fields.index {
+        if new_index != cur_index {
+            let existing_chapter = chapter::Entity::find()
+                .filter(chapter::Column::BookId.eq(book_id))
+                .filter(chapter::Column::Index.eq(new_index))
+                .select_only()
+                .column(chapter::Column::Id)
+                .one(&transaction)
+                .await;
+                
+            match existing_chapter {
+                Ok(Some(_)) => {
+                    return HttpResponse::Conflict().finish()
+                },
+                Ok(None) => {
+                    chapter_active.index = Set(new_index);
+                },
+                Err(e) => {
+                    tracing::error!("Failed to check existing chapter: {:?}", e);
+                    return HttpResponse::InternalServerError().finish()
+                }
+            }
+        }
+    }
+
+    if let Err(e) = chapter_active.update(&transaction).await {
+        tracing::error!("Failed to update chapter in database: {:?}", e);
+        return HttpResponse::InternalServerError().finish()
+    }
+
+    match transaction.commit().await {
+        Ok(_) => {
+            HttpResponse::Ok().finish()
+        },
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
 }
