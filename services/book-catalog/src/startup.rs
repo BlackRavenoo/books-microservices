@@ -2,7 +2,7 @@ use std::net::TcpListener;
 
 use actix_web::{dev::Server, web::{self, Data}, App, HttpResponse, HttpServer};
 use bb8_redis::{bb8::Pool, RedisConnectionManager};
-use cache::cache::HybridCache;
+use cache::{cache::HybridCache, serializer::bincode::BincodeSerializer};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use sea_orm::DatabaseConnection;
 use tracing_actix_web::TracingLogger;
@@ -20,16 +20,18 @@ pub fn run(
     let search = Data::new(search);
     let storage = Data::new(storage);
 
-    let constants_cache = Data::new(HybridCache::<String, ConstantsSchema>::new(
+    let constants_cache = Data::new(HybridCache::<String, ConstantsSchema, BincodeSerializer<_>>::new(
         "constants".to_string(),
         redis_pool.clone(),
         1,
+        BincodeSerializer::default()
     ));
     
-    let book_full_cache = Data::new(HybridCache::<String, BookFullSchema>::new(
+    let book_full_cache = Data::new(HybridCache::<String, BookFullSchema, BincodeSerializer<_>>::new(
         "book-full".to_string(),
         redis_pool,
         50000,
+        BincodeSerializer::default()
     ));
 
     let builder = PrometheusBuilder::new();

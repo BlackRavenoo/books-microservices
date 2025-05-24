@@ -2,7 +2,7 @@ use std::io::Read;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
-use cache::{cache::HybridCache, expiry::Expiration};
+use cache::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
 use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, TransactionTrait};
 use uuid::Uuid;
 use serde_qs::actix::QsQuery;
@@ -168,7 +168,7 @@ pub async fn get_books(db: web::Data<DatabaseConnection>, query: QsQuery<GetList
 
 pub async fn get_book(
     db: web::Data<DatabaseConnection>,
-    cache: web::Data<HybridCache<String, BookFullSchema>>,
+    cache: web::Data<HybridCache<String, BookFullSchema, BincodeSerializer<BookFullSchema>>>,
     query: web::Path<GetBookSchema>,
 ) -> impl Responder {
     match cache.get(
@@ -390,7 +390,7 @@ pub async fn update_book(
     db: web::Data<DatabaseConnection>,
     storage: web::Data<S3StorageBackend>,
     book_id: web::Path<i32>,
-    cache: web::Data<HybridCache<String, BookFullSchema>>,
+    cache: web::Data<HybridCache<String, BookFullSchema, BincodeSerializer<BookFullSchema>>>,
     MultipartForm(form): MultipartForm<UpdateBookForm>
 ) -> impl Responder {
     let cover = form.cover;

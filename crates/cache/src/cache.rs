@@ -1,39 +1,42 @@
 use std::{fmt::Display, hash::Hash};
 
 use bb8_redis::{bb8::{Pool, PooledConnection, RunError}, redis::{AsyncCommands, FromRedisValue, RedisError, ToRedisArgs}, RedisConnectionManager};
-use bincode::{config::Configuration, Decode, Encode};
 use metrics::describe_counter;
 use moka::future::{Cache, CacheBuilder};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use metrics::counter;
 
-use crate::expiry::{CacheExpiry, Expiration};
+use crate::{expiry::{CacheExpiry, Expiration}, serializer::CacheSerializer};
 
 #[derive(Error, Debug)]
 pub enum CacheError {
-    #[error("Decode error: {0}")]
-    Decode(#[from] bincode::error::DecodeError),
-    #[error("Encode error: {0}")]
-    Encode(#[from] bincode::error::EncodeError),
+    #[error("Serialization error: {0}")]
+    Serialization(String),
     #[error("Redis pool error: {0}")]
     RedisPool(#[from] RunError<RedisError>),
     #[error("Redis error: {0}")]
     Redis(#[from] RedisError)
 }
 
-pub struct HybridCache<K, V> {
+pub struct HybridCache<K, V, S> {
     prefix: String,
     local_cache: Cache<K, (Expiration, V)>,
-    redis_pool: Pool<RedisConnectionManager>
+    redis_pool: Pool<RedisConnectionManager>,
+    serializer: S,
 }
 
-impl<K, V> HybridCache<K, V> 
+impl<K, V, S> HybridCache<K, V, S> 
 where 
     K: AsRef<str> + FromRedisValue + Display + ToRedisArgs + Clone + Eq + Hash + Send + Sync + 'static,
-    V: Clone + Serialize + for<'de> Deserialize<'de> + Decode<()> + Encode + Send + Sync + 'static,
+    V: Clone + Send + Sync + 'static,
+    S: CacheSerializer<V> + Send + Sync + 'static,
 {
-    pub fn new(prefix: String, redis_pool: Pool<RedisConnectionManager>, capacity: u64) -> Self {
+    pub fn new(
+        prefix: String,
+        redis_pool: Pool<RedisConnectionManager>,
+        capacity: u64,
+        serializer: S,
+    ) -> Self {
         let local_cache = CacheBuilder::new(capacity)
             .expire_after(CacheExpiry)
             .build();
@@ -44,7 +47,8 @@ where
         Self {
             prefix,
             local_cache,
-            redis_pool
+            redis_pool,
+            serializer,
         }
     }
 
@@ -71,16 +75,17 @@ where
         match result {
             Ok(Some(value)) => {
                 counter!("cache.hits.total", "layer" => "l2").increment(1);
-                let result = bincode::decode_from_slice::<V, Configuration>(
-                    &value,
-                    bincode::config::standard(),
-                );
+                let result = self.serializer.deserialize(&value);
                 match result {
-                    Ok((value, _)) => {
+                    Ok(value) => {
                         self.local_cache.insert(key.clone(), (expiry, value.clone())).await;
                         Ok(Some(value))
                     }
-                    Err(e) => Err(CacheError::Decode(e)),
+                    Err(e) => {
+                        tracing::error!("Failed to deserialize value from Redis for key {}: {:#?}", key, e);
+                        let _ = con.del::<_, ()>(self.format_key(key)).await; // Delete bad data
+                        Err(e)
+                    },
                 }
             }
             Ok(None) => Ok(None),
@@ -96,7 +101,7 @@ where
         
         let mut con = self.get_redis_connection().await?;
 
-        let encoded = bincode::encode_to_vec(&value, bincode::config::standard())?;
+        let encoded = self.serializer.serialize(&value)?;
         con.set_ex::<_, _, ()>(self.format_key(&key), encoded, expiry.get_seconds()).await?;
 
         Ok(())
