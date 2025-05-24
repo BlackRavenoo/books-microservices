@@ -1,5 +1,5 @@
 use actix_web::web;
-use authors::{create_author, get_author, update_author};
+use authors::{create_author, delete_author, get_author, update_author};
 use books::{create_book, get_book, get_books, update_book};
 use constants::get_constants;
 use search::{search_authors, search_books};
@@ -22,5 +22,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/authors/{id}", web::get().to(get_author))
             .route("/authors/{id}", web::put().to(update_author))
             .route("/authors", web::post().to(create_author))
+            .route("/authors", web::delete().to(delete_author))
     );
 }

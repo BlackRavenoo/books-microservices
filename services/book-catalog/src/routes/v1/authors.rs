@@ -2,12 +2,18 @@ use std::io::Read;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, DatabaseConnection, EntityTrait, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, DatabaseConnection, DerivePartialModel, EntityTrait, FromQueryResult, QuerySelect, TransactionTrait};
 use uuid::Uuid;
 
 use crate::{
     entity::author, schema::{CreateAuthorForm, UpdateAuthorForm}, storage::{s3::S3StorageBackend, StorageId}, utils::image::process_image
 };
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "author::Entity")]
+struct AuthorCover {
+    cover: String
+}
 
 pub async fn get_author(
     db: web::Data<DatabaseConnection>,
@@ -182,3 +188,44 @@ pub async fn create_author(
     }
 }
 
+pub async fn delete_author(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    path: web::Path<i32>,
+) -> impl Responder {
+    let id = path.into_inner();
+
+    let author = author::Entity::find_by_id(id)
+        .select_only()
+        .column(author::Column::Cover)
+        .into_partial_model::<AuthorCover>()
+        .one(db.as_ref())
+        .await;
+
+    match author {
+        Ok(Some(author)) => {
+            let cover = author.cover;
+            if let Err(e) =  author::Entity::delete_by_id(id)
+                .exec(db.as_ref()).await {
+                    tracing::error!("Failed to delete author: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                };
+        
+            match storage.delete_by_url(&cover).await {
+                Ok(_) => (),
+                Err(e) => {
+                    tracing::error!("Failed to delete author cover: {:?}", e)
+                },
+            };
+
+            HttpResponse::Ok().finish()
+        }
+        Ok(None) => {
+            HttpResponse::NotFound().body("Author not found")
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get author: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
