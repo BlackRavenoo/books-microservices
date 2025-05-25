@@ -227,3 +227,49 @@ pub async fn update_chapter(
         },
     }
 }
+
+pub async fn delete_chapter(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    book_id: web::Path<i32>,
+    query: web::Query<ChapterSchema>
+) -> impl Responder {
+    let book_id = book_id.into_inner();
+    let chapter_index = query.number;
+
+    let transaction = match db.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to begin transaction: {:?}", e);
+            return HttpResponse::InternalServerError().finish();
+        },
+    };
+
+    let chapter = match chapter::Entity::delete_many()
+        .filter(chapter::Column::BookId.eq(book_id))
+        .filter(chapter::Column::Index.eq(chapter_index))
+        .exec_with_returning(&transaction)
+        .await {
+            Ok(mut chapters) if !chapters.is_empty() => chapters.remove(0),
+            Ok(_) => return HttpResponse::NotFound().finish(),
+            Err(e) => {
+                tracing::error!("Failed to delete chapter: {:?}", e);
+                return HttpResponse::InternalServerError().finish()
+            }
+        };
+
+    if let Err(e) = storage.delete_by_key(&chapter.key).await {
+        tracing::error!("Failed to delete chapter content from S3: {:?}", e);
+        return HttpResponse::InternalServerError().finish();
+    }
+
+    match transaction.commit().await {
+        Ok(_) => {
+            HttpResponse::Ok().finish()
+        },
+        Err(e) => {
+            tracing::error!("Failed to commit transaction: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+    }
+}
