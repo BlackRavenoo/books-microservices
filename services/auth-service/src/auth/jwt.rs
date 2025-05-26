@@ -23,6 +23,7 @@ pub struct JwtService {
     decoding_key: DecodingKey,
     issuer: String,
     pub access_token_lifetime: Duration,
+    public_key_path: String,
 }
 
 impl JwtService {
@@ -36,6 +37,7 @@ impl JwtService {
             decoding_key: DecodingKey::from_rsa_pem(&public_key)?,
             issuer: auth_settings.issuer.clone(),
             access_token_lifetime: Duration::from_std(auth_settings.access_token_lifetime)?,
+            public_key_path: auth_settings.public_key_path.clone()
         })
     }
 
@@ -75,5 +77,9 @@ impl JwtService {
                 }
                 _ => "Invalid token"
             })
+    }
+
+    pub fn get_public_key_path(&self) -> &str {
+        &self.public_key_path
     }
 }
