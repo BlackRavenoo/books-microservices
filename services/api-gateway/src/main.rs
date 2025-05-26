@@ -1,4 +1,4 @@
-use api_gateway::client::ServiceClient;
+use api_gateway::{auth::jwt::JwtValidator, client::ServiceClient};
 use api_gateway::config::get_config;
 use telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
@@ -14,9 +14,11 @@ async fn main() -> std::io::Result<()> {
 
     let client = ServiceClient::new(config.services);
 
+    let jwt_validator = JwtValidator::new(config.auth.url);
+
     let address = format!("{}:{}", config.application.host, config.application.port);
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, client)?.await
+    run(listener, client, jwt_validator)?.await
 }

@@ -8,7 +8,6 @@ pub async fn update_entity(
     payload: web::Payload,
     peer_addr: Option<PeerAddr>
 ) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: Check if user is admin
     client.update_entity(req, payload, peer_addr).await
 }
 
@@ -18,7 +17,6 @@ pub async fn create_entity(
     payload: web::Payload,
     peer_addr: Option<PeerAddr>
 ) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: Check if user is admin
     client.create_entity(req, payload, peer_addr).await
 }
 
