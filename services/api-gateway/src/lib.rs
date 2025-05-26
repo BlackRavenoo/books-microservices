@@ -4,3 +4,4 @@ pub mod client;
 pub mod error;
 pub mod schema;
 pub mod routes;
+pub mod auth;

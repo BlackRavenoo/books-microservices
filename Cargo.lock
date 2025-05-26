@@ -486,8 +486,11 @@ name = "api-gateway"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "base64 0.22.1",
  "config",
  "futures-util",
+ "jsonwebtoken",
+ "moka",
  "reqwest",
  "serde",
  "serde-aux",
