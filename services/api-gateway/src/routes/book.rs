@@ -1,4 +1,4 @@
-use actix_web::{dev::PeerAddr, web, HttpRequest, HttpResponse, Responder, ResponseError};
+use actix_web::{web, HttpResponse, Responder, ResponseError};
 use serde_qs::actix::QsQuery;
 
 use crate::{client::ServiceClient, schema::{Author, BookSchema, GetListSchema, SearchQuery}};
@@ -21,26 +21,6 @@ pub async fn get_book(
         Ok(book) => HttpResponse::Ok().json(book),
         Err(e) => e.error_response()
     }
-}
-
-pub async fn update_entity(
-    client: web::Data<ServiceClient>,
-    req: HttpRequest,
-    payload: web::Payload,
-    peer_addr: Option<PeerAddr>
-) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: Check if user is admin
-    client.update_book(req, payload, peer_addr).await
-}
-
-pub async fn create_entity(
-    client: web::Data<ServiceClient>,
-    req: HttpRequest,
-    payload: web::Payload,
-    peer_addr: Option<PeerAddr>
-) -> Result<HttpResponse, actix_web::Error> {
-    // TODO: Check if user is admin
-    client.create_book(req, payload, peer_addr).await
 }
 
 pub async fn search_book(

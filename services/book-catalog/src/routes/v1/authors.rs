@@ -205,7 +205,7 @@ pub async fn delete_author(
     match author {
         Ok(Some(author)) => {
             let cover = author.cover;
-            if let Err(e) =  author::Entity::delete_by_id(id)
+            if let Err(e) = author::Entity::delete_by_id(id)
                 .exec(db.as_ref()).await {
                     tracing::error!("Failed to delete author: {:?}", e);
                     return HttpResponse::InternalServerError().finish();

@@ -1,8 +1,8 @@
 use actix_web::{web, HttpResponse, Responder};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, TransactionTrait};
 use uuid::Uuid;
 
-use crate::{entity::chapter, schema::{ChapterFullSchema, CreateChapterFields, ChapterSchema, UpdateChapterFields}, storage::{s3::S3StorageBackend, StorageId}};
+use crate::{entity::chapter, schema::{ChapterFullSchema, CreateChapterFields, InputChapterSchema, UpdateChapterFields}, storage::{s3::S3StorageBackend, StorageId}};
 
 pub async fn create_chapter(
     db: web::Data<DatabaseConnection>,
@@ -76,7 +76,7 @@ pub async fn get_chapter(
     db: web::Data<DatabaseConnection>,
     storage: web::Data<S3StorageBackend>,
     path: web::Path<i32>,
-    query: web::Query<ChapterSchema>
+    query: web::Query<InputChapterSchema>
 ) -> impl Responder {
     let book_id = path.into_inner();
     let chapter_number = query.number;
@@ -122,7 +122,7 @@ pub async fn get_chapter(
         id: chapter.id,
         index: chapter.index,
         name: chapter.name,
-        content,
+        content: Some(content),
         book_id: chapter.book_id,
         created_at: chapter.created_at,
     };
@@ -135,7 +135,7 @@ pub async fn update_chapter(
     storage: web::Data<S3StorageBackend>,
     path: web::Path<i32>,
     form: web::Json<UpdateChapterFields>,
-    query: web::Query<ChapterSchema>
+    query: web::Query<InputChapterSchema>
 ) -> impl Responder {
     let book_id = path.into_inner();
     let chapter_number = query.number;
@@ -232,7 +232,7 @@ pub async fn delete_chapter(
     db: web::Data<DatabaseConnection>,
     storage: web::Data<S3StorageBackend>,
     book_id: web::Path<i32>,
-    query: web::Query<ChapterSchema>
+    query: web::Query<InputChapterSchema>
 ) -> impl Responder {
     let book_id = book_id.into_inner();
     let chapter_index = query.number;
@@ -272,4 +272,26 @@ pub async fn delete_chapter(
             HttpResponse::InternalServerError().finish()
         },
     }
+}
+
+pub async fn get_chapters(
+    db: web::Data<DatabaseConnection>,
+    book_id: web::Path<i32>
+) -> impl Responder {
+    let book_id = book_id.into_inner();
+
+    let chapters = match chapter::Entity::find()
+        .filter(chapter::Column::BookId.eq(book_id))
+        .order_by_asc(chapter::Column::Index)
+        .into_partial_model::<ChapterFullSchema>()
+        .all(db.as_ref())
+        .await {
+            Ok(chapters) => chapters,
+            Err(e) => {
+                tracing::error!("Failed to get chapters: {:?}", e);
+                return HttpResponse::InternalServerError().finish()
+            }
+        };
+
+    HttpResponse::Ok().json(chapters)
 }

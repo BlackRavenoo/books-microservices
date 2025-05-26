@@ -41,6 +41,11 @@ pub struct SearchQuery {
     q: String
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct InputChapterSchema {
+    pub number: i64
+}
+
 // Output
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -110,4 +115,15 @@ pub struct ConstantsSchema {
     pub tags: Vec<Tag>,
     pub genres: Vec<Genre>,
     pub status: Vec<BookStatus>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ChapterFullSchema {
+    pub id: i64,
+    pub index: i16,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<serde_json::Value>,
+    pub book_id: i32,
+    pub created_at: String,
 }

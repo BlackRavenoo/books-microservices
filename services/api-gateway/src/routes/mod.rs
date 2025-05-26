@@ -1,20 +1,39 @@
 use actix_web::web;
 use author::get_author;
-use book::{get_book, get_books, search_authors, search_book, update_entity, create_entity, get_constants};
+use book::{get_book, get_books, search_authors, search_book, get_constants};
+use chapter::{get_chapter, get_chapters};
+use entity::{create_entity, delete_entity, update_entity};
 
 pub mod book;
 pub mod author;
+pub mod entity;
+pub mod chapter;
 
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg
-        .route("/books", web::get().to(get_books))
-        .route("/books/{id}", web::get().to(get_book))
-        .route("/search/books", web::get().to(search_book))
-        .route("/search/authors", web::get().to(search_authors))
-        .route("/books/{id}", web::put().to(update_entity))
-        .route("/books", web::post().to(create_entity))
-        .route("/authors/{id}", web::put().to(update_entity))
-        .route("/authors", web::post().to(create_entity))
-        .route("/constants", web::get().to(get_constants))
-        .route("/authors/{id}", web::get().to(get_author));
+        .service(
+            web::scope("/books")
+            .route("", web::get().to(get_books))
+            .route("", web::post().to(create_entity))
+            .route("/{id}/chapter", web::post().to(create_entity))
+            .route("/{id}/chapter", web::get().to(get_chapter))
+            .route("/{id}/chapters", web::get().to(get_chapters))
+            .route("/{id}/chapter", web::put().to(update_entity))
+            .route("/{id}/chapter", web::delete().to(delete_entity))
+            .route("/{id}", web::get().to(get_book))
+            .route("/{id}", web::put().to(update_entity))
+        )
+        .service(
+            web::scope("/authors")
+            .route("", web::post().to(create_entity))
+            .route("/{id}", web::delete().to(delete_entity))
+            .route("/{id}", web::get().to(get_author))
+                .route("/{id}", web::put().to(update_entity))
+        )
+        .service(
+            web::scope("/search")
+                .route("/books", web::get().to(search_book))
+                .route("/authors", web::get().to(search_authors))
+        )
+        .route("/constants", web::get().to(get_constants));
 }

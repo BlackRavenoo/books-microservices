@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ConstantsSchema, GetListSchema, PaginationSchema, SearchQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ChapterFullSchema, InputChapterSchema, ConstantsSchema, GetListSchema, PaginationSchema, SearchQuery}};
 
 pub struct ServiceClient {
     client: Client,
@@ -47,7 +47,7 @@ impl ServiceClient {
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
     }
 
-    pub async fn update_book(
+    pub async fn update_entity(
         &self,
         req: HttpRequest,
         payload: web::Payload,
@@ -64,7 +64,7 @@ impl ServiceClient {
         ).await
     }
 
-    pub async fn create_book(
+    pub async fn create_entity(
         &self,
         req: HttpRequest,
         payload: web::Payload,
@@ -79,6 +79,14 @@ impl ServiceClient {
             peer_addr,
             &url
         ).await
+    }
+
+    pub async fn delete_entity(
+        &self,
+        req: HttpRequest
+    ) -> Result<(), ApiError> {
+        let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::DELETE, None::<&()>).await
     }
 
     pub async fn search<T>(&self, q: SearchQuery, entity: &str) -> Result<Vec<T>, ApiError>
@@ -156,6 +164,16 @@ impl ServiceClient {
 
     pub async fn get_author(&self, id: u64) -> Result<Author, ApiError> {
         let url = format!("{}/api/v1/authors/{}", self.config.book_catalog.url, id);
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+    }
+
+    pub async fn get_chapter(&self, book_id: u64, chapter_id: InputChapterSchema) -> Result<ChapterFullSchema, ApiError> {
+        let url = format!("{}/api/v1/books/{}/chapter", self.config.book_catalog.url, book_id);
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(&chapter_id)).await
+    }
+
+    pub async fn get_chapters_list(&self, book_id: u64) -> Result<Vec<ChapterFullSchema>, ApiError> {
+        let url = format!("{}/api/v1/books/{}/chapters", self.config.book_catalog.url, book_id);
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
     }
 

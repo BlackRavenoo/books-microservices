@@ -3,7 +3,7 @@ use bincode::{Decode, Encode};
 use sea_orm::{prelude::DateTimeWithTimeZone, DerivePartialModel, FromQueryResult};
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::entity::{book::{self, BookStatus}, tag, genre};
+use crate::entity::{book::{self, BookStatus}, tag, genre, chapter};
 
 #[derive(Deserialize)]
 pub enum OrderBy {
@@ -136,7 +136,7 @@ pub struct UpdateChapterFields {
 }
 
 #[derive(Deserialize)]
-pub struct ChapterSchema {
+pub struct InputChapterSchema {
     pub number: i64
 }
 
@@ -226,12 +226,15 @@ impl Serialize for BookStatus {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "chapter::Entity")]
 pub struct ChapterFullSchema {
     pub id: i64,
     pub index: i16,
     pub name: String,
-    pub content: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[sea_orm(skip)]
+    pub content: Option<serde_json::Value>,
     pub book_id: i32,
     pub created_at: DateTimeWithTimeZone,
 }
