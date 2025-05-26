@@ -9,3 +9,6 @@ services:
   ratings:
     name: "ratings service"
     url: "http://ratings-service:8080"
+
+auth:
+  url: "http://auth-service:5000"

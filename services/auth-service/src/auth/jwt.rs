@@ -60,7 +60,8 @@ impl JwtService {
             roles
         };
 
-        let header = Header::new(Algorithm::RS256);
+        let mut header = Header::new(Algorithm::RS256);
+        header.kid = Some("default-key-1".to_string());
         
         Ok(jsonwebtoken::encode(&header, &claims, &self.encoding_key)?)
     }
