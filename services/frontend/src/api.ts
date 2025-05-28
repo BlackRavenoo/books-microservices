@@ -1,4 +1,5 @@
-import type { BookPreview, Book, BookSearchResult, Constants, CreateBookFields, UpdateBookFields, AuthorWithCover, BooksListPage } from './types.ts';
+import type { Book, Constants, CreateBookFields, UpdateBookFields, AuthorWithCover, BooksListPage } from './types.ts';
+import { authStore } from './store/authStore';
 
 const API_BASE_URL = '/api';
 
@@ -99,6 +100,9 @@ export async function createBook(coverFile: File, fields: CreateBookFields): Pro
         
         const response = await fetch(`${API_BASE_URL}/books`, {
             method: 'POST',
+            headers: {
+                ...getAuthHeaders()
+            },
             body: formData,
         });
         
@@ -130,6 +134,9 @@ export async function updateBook(id: number, coverFile: File | null, fields: Upd
         
         const response = await fetch(`${API_BASE_URL}/books/${id}`, {
             method: 'PUT',
+            headers: {
+                ...getAuthHeaders()
+            },
             body: formData,
         });
         
@@ -161,6 +168,9 @@ export async function createAuthor(coverFile: File | null, fields: { name: strin
         
         const response = await fetch(`${API_BASE_URL}/authors`, {
             method: 'POST',
+            headers: {
+                ...getAuthHeaders()
+            },
             body: formData,
         });
         
@@ -192,6 +202,9 @@ export async function updateAuthor(id: number, coverFile: File | null, fields: {
         
         const response = await fetch(`${API_BASE_URL}/authors/${id}`, {
             method: 'PUT',
+            headers: {
+                ...getAuthHeaders()
+            },
             body: formData,
         });
         
@@ -218,4 +231,19 @@ export async function fetchAuthorDetails(id: string): Promise<AuthorWithCover | 
         console.error(`Error fetching author details for ID ${id}:`, error);
         return null;
     }
+}
+
+function getAuthHeaders(): HeadersInit {
+    const headers: HeadersInit = {};
+    
+    let token: string | null = null;
+    authStore.subscribe(state => {
+        token = state.token?.access_token || null;
+    })();
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
 }
