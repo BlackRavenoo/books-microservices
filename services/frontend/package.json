@@ -20,6 +20,10 @@
     },
     "dependencies": {
         "@fingerprintjs/fingerprintjs": "^4.6.2",
+        "@tiptap/core": "^2.12.0",
+        "@tiptap/extension-placeholder": "^2.12.0",
+        "@tiptap/pm": "^2.12.0",
+        "@tiptap/starter-kit": "^2.12.0",
         "svelte-carousel": "^1.0.25"
     }
 }
