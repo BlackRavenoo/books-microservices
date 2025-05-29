@@ -138,7 +138,7 @@ impl MigrationTrait for Migration {
         manager.create_table(
             Table::create()
                 .table(Chapter::Table)
-                .col(big_integer(Chapter::Id))
+                .col(big_integer(Chapter::Id).auto_increment())
                 .col(small_integer(Chapter::Index))
                 .col(integer(Chapter::BookId))
                 .col(string(Chapter::Name).not_null())
