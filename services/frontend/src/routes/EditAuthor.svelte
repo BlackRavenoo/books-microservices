@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { fetchAuthorDetails, updateAuthor } from '../api';
+    import { link } from 'svelte-routing';
     
     export let id: string;
     
@@ -89,7 +90,7 @@
                 <button class="action-button" on:click={resetForm}>
                     Продолжить редактирование
                 </button>
-                <a href={`/author/${id}`} class="action-button">
+                <a href={`/author/${id}`} use:link class="action-button">
                     Перейти к странице автора
                 </a>
             </div>

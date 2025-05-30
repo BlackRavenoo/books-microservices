@@ -81,3 +81,20 @@ export interface UpdateBookFields {
     authors_to_add?: number[];
     authors_to_delete?: number[];
 }
+
+export interface ChapterSchema {
+    id: number;
+    index: number;
+    name: string;
+    book_id: number;
+    created_at: string;
+}
+
+export interface ChapterFullSchema {
+    id: number,
+    index: number,
+    name: string,
+    content: any,
+    book_id: number,
+    created_at: string,
+}

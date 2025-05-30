@@ -3,6 +3,7 @@
     import { fetchBookDetails } from '../api';
     import type { Book } from '../types';
     import { authStore } from '../store/authStore';
+    import { link } from 'svelte-routing';
     
     export let id: string;
     
@@ -49,15 +50,15 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                         </button>
                         
-                        <button class="admin-icon-btn" title="Редактирование глав">
+                        <a href={`/book/${book.id}/chapters`} use:link class="admin-icon-btn" title="Управление главами">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                        </button>
+                        </a>
                         
-                        <button class="admin-icon-btn" title="Добавить главы">
+                        <a href={`/book/${book.id}/chapters/new`} use:link class="admin-icon-btn" title="Добавить главу">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
-                        </button>
+                        </a>
                         
-                        <a href={`/admin/edit-book/${book.id}`} class="admin-icon-btn" title="Редактирование тайтла">
+                        <a href={`/admin/edit-book/${book.id}`} use:link class="admin-icon-btn" title="Редактирование книги">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </a>
                     </div>
@@ -76,7 +77,7 @@
                         <span class="meta-label">Авторы:</span>
                         <div class="meta-list">
                             {#each book.authors as author}
-                                <a href="/author/{author.id}" class="meta-tag">{author.name}</a>
+                                <a href="/author/{author.id}" use:link class="meta-tag">{author.name}</a>
                             {/each}
                         </div>
                     </div>

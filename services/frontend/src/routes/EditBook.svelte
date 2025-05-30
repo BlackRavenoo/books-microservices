@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { fetchBookDetails, fetchConstants, search, updateBook } from '../api';
     import type { UpdateBookFields } from '../types';
+    import { link } from 'svelte-routing';
 
     export let id: number;
     
@@ -228,7 +229,7 @@
             <h2>Книга успешно обновлена!</h2>
             <div class="action-buttons">
                 <button class="action-button" on:click={resetForm}>Продолжить редактирование</button>
-                <a href={`/book/${id}`} class="action-button">Перейти к книге</a>
+                <a href={`/book/${id}`} use:link class="action-button">Перейти к книге</a>
             </div>
         </div>
     {:else}

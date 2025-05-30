@@ -125,17 +125,14 @@
     
     function toggleGenreFilter(id: number) {
         selectedGenres[id] = (selectedGenres[id] || 0) === 0 ? 1 : (selectedGenres[id] === 1 ? -1 : 0);
-        applyFilters();
     }
     
     function toggleTagFilter(id: number) {
         selectedTags[id] = (selectedTags[id] || 0) === 0 ? 1 : (selectedTags[id] === 1 ? -1 : 0);
-        applyFilters();
     }
     
     function toggleStatusFilter(id: number) {
         selectedStatuses[id] = !selectedStatuses[id];
-        applyFilters();
     }
     
     function handleSortChange() {
@@ -240,22 +237,6 @@
                         
                         {#if constants}
                             <div class="filter-section">
-                                <h3>Статус</h3>
-                                <div class="status-filters">
-                                    {#each constants.status as status}
-                                        <label class="status-checkbox">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={selectedStatuses[status.id]} 
-                                                on:change={() => toggleStatusFilter(status.id)} 
-                                            />
-                                            <span>{status.name}</span>
-                                        </label>
-                                    {/each}
-                                </div>
-                            </div>
-                            
-                            <div class="filter-section">
                                 <h3>Фильтры</h3>
                                 <div class="filter-buttons">
                                     <button 
@@ -278,8 +259,24 @@
                                     </button>
                                 </div>
                             </div>
-                            
-                            <button class="clear-filters-btn" on:click={clearFilters}>Сбросить фильтры</button>
+
+                            <div class="filter-section">
+                                <h3>Статус</h3>
+                                <div class="status-filters">
+                                    {#each constants.status as status}
+                                        <label class="status-checkbox">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedStatuses[status.id]} 
+                                                on:change={() => toggleStatusFilter(status.id)} 
+                                            />
+                                            <span>{status.name}</span>
+                                        </label>
+                                    {/each}
+                                </div>
+                                <button class="apply-filters-btn" on:click={applyFilters}>Применить</button>
+                                <button class="clear-filters-btn" on:click={clearFilters}>Сбросить фильтры</button>
+                            </div>
                         {/if}
                     </div>
                 {:else}
@@ -318,6 +315,7 @@
                                         <span class="filter-name">{genre.name}</span>
                                     </button>
                                 {/each}
+                                <button class="apply-panel-btn" on:click={applyFilters}>Выбрать</button>
                             {:else if activeFilterPanel === 'tags' && constants}
                                 {#each constants.tags as tag}
                                     <button 
@@ -336,6 +334,7 @@
                                         <span class="filter-name">{tag.name}</span>
                                     </button>
                                 {/each}
+                                <button class="apply-panel-btn" on:click={applyFilters}>Выбрать</button>
                             {/if}
                         </div>
                     </div>
@@ -661,5 +660,25 @@
             height: auto;
             position: relative;
         }
+    }
+
+    .apply-filters-btn, .apply-panel-btn {
+        padding: 0.6rem 1rem;
+        background-color: var(--primary-color);
+        border: none;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 1rem;
+        color: white;
+        font-weight: 500;
+    }
+
+    .apply-filters-btn:hover, .apply-panel-btn:hover {
+        opacity: 0.9;
+    }
+
+    .apply-panel-btn {
+        margin-top: 1.5rem;
     }
 </style>
