@@ -16,7 +16,10 @@
     import EditAuthor from "./routes/EditAuthor.svelte";
     import AuthorPage from "./routes/AuthorPage.svelte";
     import Catalog from "./routes/Catalog.svelte";
-    
+    import ChapterEditor from "./routes/ChapterEditor.svelte";
+    import ChaptersList from "./routes/ChaptersList.svelte";
+    import ChapterReader from "./routes/ChapterReader.svelte";
+
     export let url = "";
     
     onMount(() => {
@@ -57,6 +60,10 @@
             <Route path="/admin/edit-book/:id" component="{EditBook}" />
             <Route path="/admin/create-author" component="{CreateAuthor}" />
             <Route path="/admin/edit-author/:id" component="{EditAuthor}" />
+            <Route path="/book/:bookId/chapters" component="{ChaptersList}" />
+            <Route path="/book/:bookId/chapters/new" component="{ChapterEditor}" />
+            <Route path="/book/:bookId/chapters/:index/edit" component="{ChapterEditor}" />
+            <Route path="/book/:bookId/chapter" component="{ChapterReader}" />
         </main>
         <Footer />
     </div>
