@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT book_id, avg_rating::TEXT as \"avg_rating!\"\n        FROM book_rating_stats\n        ORDER BY avg_rating DESC\n        OFFSET $1 LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "book_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "avg_rating!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "c55c915fe0bf8a4bd20b8a39050aba6db1049a3267ef5b4e82c7caa33a935c17"
+}
