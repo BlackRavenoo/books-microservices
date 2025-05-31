@@ -9,7 +9,7 @@
       "database.user": "${POSTGRES_USER}",
       "database.password": "${POSTGRES_PASSWORD}",
       "database.dbname": "${POSTGRES_DB}",
-      "database.server.name": "metadata_db_server",
+      "database.server.name": "book_catalog",
       "table.include.list": "public.books",
       "plugin.name": "pgoutput",
       "slot.name": "debezium_slot",
