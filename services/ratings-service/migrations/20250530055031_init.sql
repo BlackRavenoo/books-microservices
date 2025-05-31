@@ -3,7 +3,7 @@ CREATE TABLE ratings (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     user_id INT NOT NULL,
     book_id INT NOT NULL,
-    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 10),
+    rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 10),
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, book_id)
 );
@@ -37,11 +37,14 @@ CREATE OR REPLACE FUNCTION update_book_rating_stats()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' THEN
-        INSERT INTO book_rating_stats (book_id, total_ratings, sum_ratings)
-        VALUES (NEW.book_id, 1, NEW.rating)
-        ON CONFLICT (book_id) DO UPDATE SET
-            total_ratings = book_rating_stats.total_ratings + 1,
-            sum_ratings = book_rating_stats.sum_ratings + NEW.rating;
+        UPDATE book_rating_stats SET
+            total_ratings = total_ratings + 1,
+            sum_ratings = sum_ratings + NEW.rating
+        WHERE book_id = NEW.book_id;
+        
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Book with id % does not exist', NEW.book_id;
+        END IF;
     ELSIF TG_OP = 'UPDATE' THEN
         UPDATE book_rating_stats SET
             sum_ratings = sum_ratings - OLD.rating + NEW.rating
@@ -54,7 +57,7 @@ BEGIN
     END IF;
     RETURN COALESCE(NEW, OLD);
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE 'plpgsql';
 
 CREATE TRIGGER update_book_stats_on_rating_change
     AFTER INSERT OR UPDATE OR DELETE ON ratings
