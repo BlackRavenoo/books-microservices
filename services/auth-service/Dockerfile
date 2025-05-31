@@ -18,7 +18,6 @@ RUN rm -rf services/auth-service/src
 
 COPY crates crates
 COPY services/auth-service services/auth-service
-COPY .sqlx .sqlx
 ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin auth-service
 

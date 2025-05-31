@@ -1,0 +1,18 @@
+[package]
+name = "ratings-service"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+actix-web.workspace = true
+sqlx.workspace = true
+tracing-actix-web.workspace = true
+secrecy.workspace = true
+serde.workspace = true
+serde-aux.workspace = true
+config.workspace = true
+tracing.workspace = true
+
+telemetry.workspace = true

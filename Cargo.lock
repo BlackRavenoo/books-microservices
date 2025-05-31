@@ -3723,6 +3723,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ratings-service"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "config",
+ "secrecy",
+ "serde",
+ "serde-aux",
+ "sqlx",
+ "telemetry",
+ "tracing",
+ "tracing-actix-web",
+]
+
+[[package]]
 name = "rav1e"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

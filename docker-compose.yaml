@@ -8,7 +8,7 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_MULTIPLE_DATABASES=${METADATA_DB:-book_catalog},${AUTH_DB:-auth_service}
+      - POSTGRES_MULTIPLE_DATABASES=${METADATA_DB:-book_catalog},${AUTH_DB:-auth_service},${RATINGS_DB:-ratings_service}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./infra/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
@@ -195,6 +195,23 @@ services:
       - APP_DATABASE__HOST=postgres
       - APP_DATABASE__PASSWORD=${POSTGRES_PASSWORD:-password}
       - APP_DATABASE__DATABASE_NAME=${AUTH_DB:-auth_service}
+      - APP_DATABASE__PORT=${POSTGRES_PORT:-5432}
+      - APP_DATABASE__REQUIRE_SSL=false
+      - APP_REDIS__URL=redis://redis:6379
+
+  ratings-service:
+    build:
+      context: .
+      dockerfile: services/ratings-service/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5002:5000"
+    environment:
+      - APP_DATABASE__HOST=postgres
+      - APP_DATABASE__PASSWORD=${POSTGRES_PASSWORD:-password}
+      - APP_DATABASE__DATABASE_NAME=${RATINGS_DB:-ratings_service}
       - APP_DATABASE__PORT=${POSTGRES_PORT:-5432}
       - APP_DATABASE__REQUIRE_SSL=false
       - APP_REDIS__URL=redis://redis:6379

@@ -9,6 +9,7 @@ members = [
     "services/api-gateway",
     "services/auth-service",
     "services/book-catalog",
+    "services/ratings-service",
 
     "crates/telemetry",
     "crates/cache"

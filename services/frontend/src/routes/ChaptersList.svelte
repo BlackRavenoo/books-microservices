@@ -74,7 +74,7 @@
                     </div>
                     
                     <div class="chapter-actions">
-                        <a href="/book/{bookId}/chapter?index={chapter.index}" use:link class="read-btn">
+                        <a href="/book/{bookId}/chapter?number={chapter.index}" use:link class="read-btn">
                             Читать
                         </a>
                         <a href="/book/{bookId}/chapters/{chapter.index}/edit" use:link class="edit-btn">

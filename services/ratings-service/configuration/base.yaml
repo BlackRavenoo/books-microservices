@@ -1,0 +1,12 @@
+application:
+  port: 5000
+
+database:
+  host: "localhost"
+  port: 5432
+  username: "postgres"
+  password: "password"
+  database_name: "ratings_service"
+  
+redis:
+  url: "redis://localhost:6379"
