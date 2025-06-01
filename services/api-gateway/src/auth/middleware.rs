@@ -5,13 +5,12 @@ use futures_util::future::LocalBoxFuture;
 
 use super::jwt::JwtValidator;
 
-
-
 #[derive(Clone)]
 pub struct JwtConfig {
     pub required_roles: Option<Vec<String>>,
     pub required_scopes: Option<Vec<String>>,
     pub require_admin: bool,
+    pub optional: bool,
 }
 
 impl Default for JwtConfig {
@@ -20,6 +19,7 @@ impl Default for JwtConfig {
             required_roles: None,
             required_scopes: None,
             require_admin: false,
+            optional: false,
         }
     }
 }
@@ -41,6 +41,11 @@ impl JwtConfig {
 
     pub fn require_admin(mut self) -> Self {
         self.require_admin = true;
+        self
+    }
+
+    pub fn optional(mut self) -> Self {
+        self.optional = true;
         self
     }
 }
@@ -117,7 +122,12 @@ where
             let auth_header = match auth_header {
                 Some(header) => header,
                 None => {
-                    return Ok(create_error_response(req, "Missing Authorization header", StatusCode::UNAUTHORIZED));
+                    if config.optional {
+                        let res = service.call(req).await?;
+                        return Ok(res.map_body(|_, body| EitherBody::left(body)));
+                    } else {
+                        return Ok(create_error_response(req, "Missing Authorization header", StatusCode::UNAUTHORIZED));
+                    }
                 }
             };
 
@@ -190,5 +200,9 @@ impl JwtMiddleware {
 
     pub fn require_scopes(scopes: Vec<&str>) -> Self {
         Self::new(JwtConfig::new().require_scopes(scopes))
+    }
+
+    pub fn optional() -> Self {
+        Self::new(JwtConfig::new().optional())
     }
 }
