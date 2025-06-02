@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use sqlx::PgPool;
 
-use crate::schema::{BookRatingSchema, BulkGetSchema, GetListSchema, GetSchema, PaginationSchema, RateSchema, RatingSchema};
+use crate::schema::{BookRatingSchema, BulkGetSchema, GetSchema, RateSchema, RatingSchema};
 
 pub async fn get_rating(
     pool: web::Data<PgPool>,
@@ -71,56 +71,6 @@ pub async fn bulk_get(
         Ok(ratings) => HttpResponse::Ok().json(ratings),
         Err(e) => {
             tracing::error!("Failed to bulk get ratings: {}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
-}
-
-pub async fn get_list(
-    pool: web::Data<PgPool>,
-    schema: web::Json<GetListSchema>
-) -> impl Responder {
-    let schema = schema.into_inner();
-    let page = schema.page.unwrap_or(1) - 1;
-    let page_size = schema.page_size.unwrap_or(50);
-
-    let ratings_list = sqlx::query_as!(
-        BookRatingSchema,
-        r#"
-        SELECT book_id, avg_rating::REAL as "avg_rating!"
-        FROM book_rating_stats
-        ORDER BY avg_rating DESC
-        OFFSET $1 LIMIT $2
-        "#,
-        (page * page_size) as i64,
-        page_size as i64
-    )
-    .fetch_all(pool.as_ref())
-    .await;
-    
-    let total_items = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM book_rating_stats"
-    )
-    .fetch_one(pool.as_ref())
-    .await;
-
-    match (ratings_list, total_items) {
-        (Ok(ratings), Ok(Some(count))) => {
-            let total_items = count as u64;
-            let max_page = ((total_items as f64) / (page_size as f64)).ceil() as u64;
-            
-            HttpResponse::Ok().json(PaginationSchema{
-                max_page,
-                total_items,
-                items: ratings,
-            })
-        },
-        (Err(e), _) | (_, Err(e)) => {
-            tracing::error!("Failed to get ratings or pagination data: {}", e);
-            HttpResponse::InternalServerError().finish()
-        },
-        (_, Ok(None)) => {
-            tracing::error!("COUNT query returned NULL");
             HttpResponse::InternalServerError().finish()
         }
     }
