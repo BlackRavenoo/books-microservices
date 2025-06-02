@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT book_id, avg_rating::TEXT as \"avg_rating!\"\n        FROM book_rating_stats\n        WHERE book_id = ANY($1)\n        ",
+  "query": "\n        SELECT book_id, avg_rating::REAL as \"avg_rating!\"\n        FROM book_rating_stats\n        ORDER BY avg_rating DESC\n        OFFSET $1 LIMIT $2\n        ",
   "describe": {
     "columns": [
       {
@@ -11,12 +11,13 @@
       {
         "ordinal": 1,
         "name": "avg_rating!",
-        "type_info": "Text"
+        "type_info": "Float4"
       }
     ],
     "parameters": {
       "Left": [
-        "Int4Array"
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -24,5 +25,5 @@
       null
     ]
   },
-  "hash": "ef85a21c72d7916d17b219027217398e9733492a7cba9f9137079d315cfdb639"
+  "hash": "7875585c47f031eb0c1c091e9e447f7d7420d8cc13a523c8654bf50abad95a12"
 }

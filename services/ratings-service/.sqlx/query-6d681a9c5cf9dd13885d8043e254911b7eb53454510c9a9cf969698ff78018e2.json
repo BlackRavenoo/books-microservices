@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT avg_rating::REAL as \"avg!\",\n                (SELECT rating FROM ratings WHERE book_id = $1 AND user_id = $2) as \"user!\"\n            FROM book_rating_stats\n            WHERE book_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avg!",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user!",
+        "type_info": "Int2"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "6d681a9c5cf9dd13885d8043e254911b7eb53454510c9a9cf969698ff78018e2"
+}
