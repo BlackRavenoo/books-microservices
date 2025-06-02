@@ -46,6 +46,17 @@ pub struct InputChapterSchema {
     pub number: i64
 }
 
+#[derive(Deserialize)]
+pub struct BookRatingSchema {
+    pub book_id: i32,
+    pub avg_rating: f32
+}
+
+#[derive(Serialize)]
+pub struct UserIdSchema {
+    pub user_id: Option<i32>
+}
+
 // Output
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -76,7 +87,8 @@ pub struct Author {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Rating {
-    pub average: String
+    pub avg: f32,
+    pub user: Option<i16>
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -107,7 +119,7 @@ pub struct BookSchema {
     pub title: String,
     pub thumbnail: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub rating: Option<Rating>
+    pub avg_rating: Option<f32>
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -126,4 +138,9 @@ pub struct ChapterFullSchema {
     pub content: Option<serde_json::Value>,
     pub book_id: i32,
     pub created_at: String,
+}
+
+#[derive(Serialize)]
+pub struct BulkGetSchema {
+    pub ids: Vec<i32>
 }

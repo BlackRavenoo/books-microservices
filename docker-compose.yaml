@@ -180,6 +180,7 @@ services:
       - "4999:5000"
     environment:
       - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
+      - APP_SERVICES__RATINGS__URL=http://ratings-service:5000
 
   auth-service:
     build:

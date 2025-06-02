@@ -18,7 +18,11 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("", web::get().to(get_books))
             .route("/{id}/chapter", web::get().to(get_chapter))
             .route("/{id}/chapters", web::get().to(get_chapters))
-            .route("/{id}", web::get().to(get_book))
+            .service(
+                web::scope("")
+                .wrap(JwtMiddleware::optional())
+                .route("/{id}", web::get().to(get_book))
+            )
             .service(
                 web::scope("")
                     .wrap(JwtMiddleware::admin_only())

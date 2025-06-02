@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{collections::HashMap, str::FromStr, time::Duration};
 
 use actix_web::{dev::PeerAddr, error, web, Error, HttpRequest, HttpResponse};
 use futures_util::StreamExt as _;
@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookSchema, ChapterFullSchema, InputChapterSchema, ConstantsSchema, GetListSchema, PaginationSchema, SearchQuery}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookRatingSchema, BookSchema, BulkGetSchema, ChapterFullSchema, ConstantsSchema, GetListSchema, InputChapterSchema, PaginationSchema, SearchQuery, UserIdSchema}};
 
 pub struct ServiceClient {
     client: Client,
@@ -39,12 +39,94 @@ impl ServiceClient {
             },
         };
         let url = format!("{}/api/v1/books?{}", self.config.book_catalog.url, query_string);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+        let mut result: PaginationSchema<BookSchema> = match self.make_request(
+            &url,
+            &self.config.book_catalog.name,
+            reqwest::Method::GET,
+            None::<&()>,
+            None::<&()>
+        ).await {
+            Ok(result) => result,
+            Err(e) => {
+                tracing::error!("Failed to get books list: {:?}", e);
+                return Err(ApiError::ServiceError("Failed to get books list".to_string()))
+            },
+        };
+
+        if result.items.is_empty() {
+            return Ok(result)
+        }
+
+        let ids = result.items
+            .iter()
+            .map(|item| item.id)
+            .collect::<Vec<_>>();
+
+        let rating_url = format!("{}/ratings/bulk_get", self.config.ratings.url);
+
+        let ratings_result: Result<Vec<BookRatingSchema>, ApiError> = self.make_request(
+            &rating_url,
+            &self.config.ratings.name,
+            reqwest::Method::POST,
+            None::<&()>,
+            Some(&BulkGetSchema{ids})
+        ).await;
+
+        match ratings_result {
+            Ok(ratings) => {
+                let ratings_map: HashMap<_, _> = ratings
+                    .into_iter()
+                    .map(|rating| (rating.book_id, rating.avg_rating))
+                    .collect();
+
+                for book in result.items.iter_mut() {
+                    book.avg_rating = ratings_map.get(&book.id).copied();
+                }
+            },
+            Err(e) => tracing::error!("Failed to get ratings: {:?}", e),
+        };
+
+        Ok(result)
     }
     
-    pub async fn get_book(&self, id: u64) -> Result<BookFullSchema, ApiError> {
-        let url = format!("{}/api/v1/books/{}", self.config.book_catalog.url, id);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+    pub async fn get_book(&self, id: u64, user_id: Option<i32>) -> Result<BookFullSchema, ApiError> {
+        let book_url = format!("{}/api/v1/books/{}", self.config.book_catalog.url, id);
+        let rating_url = format!("{}/ratings/{}", self.config.ratings.url, id);
+
+        let user_id_schema = UserIdSchema {
+            user_id,
+        };
+
+        let (book_result, rating_result) = tokio::join!(
+            self.make_request(
+                &book_url,
+                &self.config.book_catalog.name,
+                reqwest::Method::GET,
+                None::<&()>,
+                None::<&()>
+            ),
+            self.make_request(
+                &rating_url,
+                &self.config.ratings.name,
+                reqwest::Method::POST,
+                None::<&()>,
+                Some(&user_id_schema)
+            )
+        );
+    
+        let mut book: BookFullSchema = book_result.map_err(|e| {
+            tracing::error!("Failed to get book: {:?}", e);
+            ApiError::ServiceError("Failed to get book".to_string())
+        })?;
+    
+        book.rating = rating_result
+            .map_err(|e| {
+                tracing::error!("Failed to get rating: {:?}", e);
+                e
+            })
+            .ok();
+
+        Ok(book)
     }
 
     pub async fn update_entity(
@@ -86,7 +168,7 @@ impl ServiceClient {
         req: HttpRequest
     ) -> Result<(), ApiError> {
         let url = format!("{}/api/v1{}", self.config.book_catalog.url, req.uri().path());
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::DELETE, None::<&()>).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::DELETE, None::<&()>, None::<&()>).await
     }
 
     pub async fn search<T>(&self, q: SearchQuery, entity: &str) -> Result<Vec<T>, ApiError>
@@ -94,7 +176,7 @@ impl ServiceClient {
         T: for<'de> serde::Deserialize<'de>,
     {
         let url = format!("{}/api/v1/search/{}", self.config.book_catalog.url, entity);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(&q)).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(&q), None::<&()>).await
     }
 
     async fn forward_request(
@@ -159,35 +241,40 @@ impl ServiceClient {
 
     pub async fn get_constants(&self) -> Result<ConstantsSchema, ApiError> {
         let url = format!("{}/api/v1/constants", self.config.book_catalog.url);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>, None::<&()>).await
     }
 
     pub async fn get_author(&self, id: u64) -> Result<Author, ApiError> {
         let url = format!("{}/api/v1/authors/{}", self.config.book_catalog.url, id);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>, None::<&()>).await
     }
 
     pub async fn get_chapter(&self, book_id: u64, chapter_id: InputChapterSchema) -> Result<ChapterFullSchema, ApiError> {
         let url = format!("{}/api/v1/books/{}/chapter", self.config.book_catalog.url, book_id);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(&chapter_id)).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, Some(&chapter_id), None::<&()>).await
     }
 
     pub async fn get_chapters_list(&self, book_id: u64) -> Result<Vec<ChapterFullSchema>, ApiError> {
         let url = format!("{}/api/v1/books/{}/chapters", self.config.book_catalog.url, book_id);
-        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>).await
+        self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>, None::<&()>).await
     }
 
     #[inline]
-    async fn make_request<T, Q>(&self, url: &str, service_name: &str, method: reqwest::Method, query: Option<&Q>) -> Result<T, ApiError>
+    async fn make_request<T, Q, J>(&self, url: &str, service_name: &str, method: reqwest::Method, query: Option<&Q>, json: Option<&J>) -> Result<T, ApiError>
     where
         T: for<'de> serde::Deserialize<'de>,
         Q: serde::Serialize + ?Sized,
+        J: serde::Serialize
     {
         let method_str = method.as_str().to_owned();
         let mut request = self.client.request(method, url);
         
         if let Some(q) = query {
             request = request.query(q);
+        }
+
+        if let Some(json) = json {
+            request = request.json(json);
         }
         
         let response = request

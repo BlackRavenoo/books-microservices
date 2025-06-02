@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder, ResponseError};
 use serde_qs::actix::QsQuery;
 
-use crate::{client::ServiceClient, schema::{Author, BookSchema, GetListSchema, SearchQuery}};
+use crate::{auth::extractor::UserId, client::ServiceClient, schema::{Author, BookSchema, GetListSchema, SearchQuery}};
 
 pub async fn get_books(
     client: web::Data<ServiceClient>,
@@ -15,9 +15,10 @@ pub async fn get_books(
 
 pub async fn get_book(
     client: web::Data<ServiceClient>,
-    id: web::Path<u64>
+    id: web::Path<u64>,
+    user_id: UserId
 ) -> impl Responder {
-    match client.get_book(id.into_inner()).await {
+    match client.get_book(id.into_inner(), user_id.0).await {
         Ok(book) => HttpResponse::Ok().json(book),
         Err(e) => e.error_response()
     }
