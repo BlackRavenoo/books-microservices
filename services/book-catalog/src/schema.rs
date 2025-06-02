@@ -140,6 +140,11 @@ pub struct InputChapterSchema {
     pub number: i64
 }
 
+#[derive(Deserialize)]
+pub struct BulkGetSchema {
+    pub ids: Vec<i32>
+}
+
 // Output schema
 
 #[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]

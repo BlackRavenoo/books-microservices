@@ -10,7 +10,7 @@ use serde_qs::actix::QsQuery;
 use crate::{
     entity::{
         author, book::{self, Entity as Book}, book_author, book_genre, book_tag, chapter, series
-    }, schema::{BookFullSchema, BookSchema, CreateBookForm, GetBookSchema, GetListSchema, PaginationSchema, UpdateBookForm}, storage::{s3::S3StorageBackend, StorageId}, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
+    }, schema::{BookFullSchema, BookSchema, BulkGetSchema, CreateBookForm, GetBookSchema, GetListSchema, PaginationSchema, UpdateBookForm}, storage::{s3::S3StorageBackend, StorageId}, utils::{db::{insert_book_relations, remove_book_relations}, image::process_image}
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
@@ -564,4 +564,19 @@ pub async fn update_book(
             HttpResponse::InternalServerError().finish()
         },
     }
+}
+
+pub async fn bulk_get_books(db: web::Data<DatabaseConnection>, schema: web::Json<BulkGetSchema>) -> impl Responder {
+    let ids = schema.into_inner().ids;
+    match Book::find()
+        .filter(book::Column::Id.is_in(ids))
+        .into_partial_model::<BookSchema>()
+        .all(db.as_ref())
+        .await {
+            Ok(books) => HttpResponse::Ok().json(books),
+            Err(e) => {
+                tracing::error!("Failed to get books by ids: {:?}", e);
+                HttpResponse::InternalServerError().finish()
+            },
+        }
 }

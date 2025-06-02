@@ -5,6 +5,8 @@ use chapters::{create_chapter, delete_chapter, get_chapter, get_chapters, update
 use constants::get_constants;
 use search::{search_authors, search_books};
 
+use crate::routes::v1::books::bulk_get_books;
+
 mod constants;
 mod search;
 mod books;
@@ -16,6 +18,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("v1")
             .service(
                 web::scope("/books")
+                    .route("/bulk_get", web::post().to(bulk_get_books))
                     .route("", web::get().to(get_books))
                     .route("", web::post().to(create_book))
                     .route("/{id}/chapter", web::post().to(create_chapter))
