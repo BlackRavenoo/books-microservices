@@ -34,3 +34,10 @@ pub struct RatingSchema {
     pub avg: f32,
     pub user: Option<i16>
 }
+
+#[derive(Serialize)]
+pub struct PaginationSchema<T> {
+    pub max_page: u64,
+    pub total_items: u64,
+    pub items: Vec<T>
+}

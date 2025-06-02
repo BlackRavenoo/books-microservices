@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use sqlx::PgPool;
 
-use crate::schema::{BookRatingSchema, BulkGetSchema, GetListSchema, GetSchema, RateSchema, RatingSchema};
+use crate::schema::{BookRatingSchema, BulkGetSchema, GetListSchema, GetSchema, PaginationSchema, RateSchema, RatingSchema};
 
 pub async fn get_rating(
     pool: web::Data<PgPool>,
@@ -97,11 +97,30 @@ pub async fn get_list(
     )
     .fetch_all(pool.as_ref())
     .await;
+    
+    let total_items = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM book_rating_stats"
+    )
+    .fetch_one(pool.as_ref())
+    .await;
 
-    match ratings_list {
-        Ok(ratings) => HttpResponse::Ok().json(ratings),
-        Err(e) => {
-            tracing::error!("Failed to bulk get ratings: {}", e);
+    match (ratings_list, total_items) {
+        (Ok(ratings), Ok(Some(count))) => {
+            let total_items = count as u64;
+            let max_page = ((total_items as f64) / (page_size as f64)).ceil() as u64;
+            
+            HttpResponse::Ok().json(PaginationSchema{
+                max_page,
+                total_items,
+                items: ratings,
+            })
+        },
+        (Err(e), _) | (_, Err(e)) => {
+            tracing::error!("Failed to get ratings or pagination data: {}", e);
+            HttpResponse::InternalServerError().finish()
+        },
+        (_, Ok(None)) => {
+            tracing::error!("COUNT query returned NULL");
             HttpResponse::InternalServerError().finish()
         }
     }
