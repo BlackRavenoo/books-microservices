@@ -26,7 +26,7 @@ CREATE TABLE book_rating_stats (
     book_id INT PRIMARY KEY,
     total_ratings INT NOT NULL DEFAULT 0,
     sum_ratings BIGINT NOT NULL DEFAULT 0,
-    avg_rating DECIMAL(3,2) GENERATED ALWAYS AS (
+    avg_rating DECIMAL(4,2) GENERATED ALWAYS AS (
         CASE WHEN total_ratings > 0 THEN sum_ratings::DECIMAL / total_ratings ELSE 0 END
     ) STORED NOT NULL
 );
