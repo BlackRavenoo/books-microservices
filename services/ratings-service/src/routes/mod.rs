@@ -7,7 +7,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/ratings")
             .route("/bulk_get", web::post().to(bulk_get))
-            .route("/{id}", web::post().to(get_rating))
             .route("/rate", web::post().to(rate))
+            .route("/{id}", web::post().to(get_rating))
     );
 }

@@ -108,6 +108,8 @@ pub async fn rate(
                 r#"
                 INSERT INTO ratings(user_id, book_id, rating)
                 VALUES ($1, $2, $3)
+                ON CONFLICT (user_id, book_id)
+                DO UPDATE SET rating = EXCLUDED.rating
                 "#,
                 schema.user_id,
                 schema.item_id,

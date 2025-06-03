@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO ratings(user_id, book_id, rating)\n                VALUES ($1, $2, $3)\n                ON CONFLICT (user_id, book_id)\n                DO UPDATE SET rating = EXCLUDED.rating\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8640b23b25219fb8599e51a33279a91a39dffea321b6993eefa21dd45fd16367"
+}
