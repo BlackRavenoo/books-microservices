@@ -1,5 +1,10 @@
 import type { Book, Constants, CreateBookFields, UpdateBookFields, AuthorWithCover, BooksListPage, ChapterFullSchema, ChapterSchema } from './types.ts';
 import { authStore } from './store/authStore';
+import { refreshAccessToken } from './utils/auth';
+import { get } from 'svelte/store';
+
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
 
 const API_BASE_URL = '/api';
 
@@ -50,7 +55,8 @@ export async function fetchBooks(params: {
 
 export async function fetchBookDetails(id: string): Promise<Book | null> {
     try {
-        const response = await fetch(`${API_BASE_URL}/books/${id}`);
+        const response = await fetchWithAuth(`${API_BASE_URL}/books/${id}`);
+        
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -98,11 +104,8 @@ export async function createBook(coverFile: File, fields: CreateBookFields): Pro
 
         formData.append('fields', fieldsBlob);
         
-        const response = await fetch(`${API_BASE_URL}/books`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/books`, {
             method: 'POST',
-            headers: {
-                ...getAuthHeaders()
-            },
             body: formData,
         });
         
@@ -132,11 +135,8 @@ export async function updateBook(id: number, coverFile: File | null, fields: Upd
 
         formData.append('fields', fieldsBlob);
         
-        const response = await fetch(`${API_BASE_URL}/books/${id}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/books/${id}`, {
             method: 'PUT',
-            headers: {
-                ...getAuthHeaders()
-            },
             body: formData,
         });
         
@@ -165,12 +165,9 @@ export async function createAuthor(coverFile: File | null, fields: { name: strin
         });
 
         formData.append('fields', fieldsBlob);
-        
-        const response = await fetch(`${API_BASE_URL}/authors`, {
+
+        const response = await fetchWithAuth(`${API_BASE_URL}/authors`, {
             method: 'POST',
-            headers: {
-                ...getAuthHeaders()
-            },
             body: formData,
         });
         
@@ -200,11 +197,8 @@ export async function updateAuthor(id: number, coverFile: File | null, fields: {
 
         formData.append('fields', fieldsBlob);
         
-        const response = await fetch(`${API_BASE_URL}/authors/${id}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/authors/${id}`, {
             method: 'PUT',
-            headers: {
-                ...getAuthHeaders()
-            },
             body: formData,
         });
         
@@ -239,11 +233,10 @@ export async function createChapter(bookId: string, fields: {
     index: number;
 }): Promise<any> {
     try {
-        const response = await fetch(`${API_BASE_URL}/books/${bookId}/chapter`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/books/${bookId}/chapter`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...getAuthHeaders()
             },
             body: JSON.stringify(fields),
         });
@@ -292,11 +285,10 @@ export async function updateChapter(bookId: string, chapterIndex: number, fields
     index?: number;
 }): Promise<any> {
     try {
-        const response = await fetch(`${API_BASE_URL}/books/${bookId}/chapter?number=${chapterIndex}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/books/${bookId}/chapter?number=${chapterIndex}`, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeaders()
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(fields),
         });
@@ -315,11 +307,8 @@ export async function updateChapter(bookId: string, chapterIndex: number, fields
 
 export async function deleteChapter(bookId: string, chapterIndex: number): Promise<any> {
     try {
-        const response = await fetch(`${API_BASE_URL}/books/${bookId}/chapter?number=${chapterIndex}`, {
-            method: 'DELETE',
-            headers: {
-                ...getAuthHeaders()
-            },
+        const response = await fetchWithAuth(`${API_BASE_URL}/books/${bookId}/chapter?number=${chapterIndex}`, {
+            method: 'DELETE'
         });
         
         if (!response.ok) {
@@ -334,17 +323,99 @@ export async function deleteChapter(bookId: string, chapterIndex: number): Promi
     }
 }
 
-function getAuthHeaders(): HeadersInit {
-    const headers: HeadersInit = {};
-    
-    let token: string | null = null;
-    authStore.subscribe(state => {
-        token = state.token?.access_token || null;
-    })();
-    
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+export async function rateBook(bookId: number, score: number): Promise<void> {
+    try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/ratings/rate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                item_id: bookId,
+                score: score
+            }),
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `HTTP error! Status: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error rating book:', error);
+        throw error;
     }
+}
+
+export async function removeBookRating(bookId: number): Promise<void> {
+    return rateBook(bookId, 0);
+}
+
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+    const makeRequest = async (token: string | null): Promise<Response> => {
+        const headers: Record<string, string> = {
+            ...(options.headers as Record<string, string> || {}),
+          };
+  
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+  
+        return fetch(url, {
+            ...options,
+            headers,
+        });
+    };
+
+    const authState = get(authStore);
+    let response = await makeRequest(authState.token?.access_token || null);
+
+    if (response.status === 401 && authState.token?.refresh_token) {
+        const tokenRefreshed = await refreshTokenIfNeeded();
+        
+        if (tokenRefreshed) {
+            const newAuthState = get(authStore);
+            response = await makeRequest(newAuthState.token?.access_token || null);
+        }
+    }
+
+    return response;
+}
+
+async function refreshTokenIfNeeded(): Promise<boolean> {
+    if (isRefreshing && refreshPromise) {
+        return await refreshPromise;
+    }
+  
+    isRefreshing = true;
+    refreshPromise = performTokenRefresh();
+  
+    try {
+        const result = await refreshPromise;
+        return result;
+    } finally {
+        isRefreshing = false;
+        refreshPromise = null;
+    }
+}
+
+async function performTokenRefresh(): Promise<boolean> {
+    try {
+        const authState = get(authStore);
+        const refreshToken = authState.token?.refresh_token;
+  
+        if (!refreshToken) {
+            authStore.logout();
+            return false;
+        }
     
-    return headers;
+        const newToken = await refreshAccessToken(refreshToken);
+        
+        authStore.setTokens(newToken.access_token, newToken.refresh_token, newToken.token_type);
+        
+        return true;
+    } catch (error) {
+        console.error('Error refreshing token:', error);
+        authStore.logout();
+        return false;
+    }
 }

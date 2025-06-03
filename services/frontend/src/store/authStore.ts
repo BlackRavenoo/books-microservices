@@ -47,9 +47,25 @@ function createAuthStore() {
         initialize: () => {
             const tokenStr = localStorage.getItem('token');
             const userStr = localStorage.getItem('user');
-            
             const token = tokenStr ? JSON.parse(tokenStr) : null;
             const user = userStr ? JSON.parse(userStr) : null;
+            
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.access_token.split('.')[1]));
+                    if (Date.now() >= payload.exp * 1000) {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        set({ user: null, token: null });
+                        return;
+                    }
+                } catch (e) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    set({ user: null, token: null });
+                    return;
+                }
+            }
             
             set({ user, token });
         },
@@ -60,6 +76,30 @@ function createAuthStore() {
         isAdmin: () => {
             const state = get(authStore);
             return state.user?.roles?.includes('admin') || false;
+        },
+        isTokenExpired: () => {
+            const state = get(authStore);
+            if (!state.token?.access_token) return true;
+            
+            try {
+                const payload = JSON.parse(atob(state.token.access_token.split('.')[1]));
+                return Date.now() >= payload.exp * 1000;
+            } catch (e) {
+                return true;
+            }
+        },
+        isTokenExpiringSoon: (minutesBeforeExpiry: number = 2) => {
+            const state = get(authStore);
+            if (!state.token?.access_token) return true;
+            
+            try {
+                const payload = JSON.parse(atob(state.token.access_token.split('.')[1]));
+                const expiryTime = payload.exp * 1000;
+                const warningTime = expiryTime - (minutesBeforeExpiry * 60 * 1000);
+                return Date.now() >= warningTime;
+            } catch (e) {
+                return true;
+            }
         }
     };
 }

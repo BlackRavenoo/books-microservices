@@ -2,6 +2,7 @@ export interface BookPreview {
     id: string;
     title: string;
     thumbnail: string;
+    avg_rating: number;
 }
 
 export interface BooksListPage {
@@ -46,6 +47,11 @@ export interface AuthorWithCover {
     cover: string;
 }
 
+export interface Rating {
+    avg: number,
+    user: number
+}
+
 export interface Book {
     id: string;
     title: string;
@@ -57,6 +63,7 @@ export interface Book {
     authors: Author[];
     chapters_count: number;
     series_id: number | null;
+    rating?: Rating;
 }
 
 export interface CreateBookFields {
