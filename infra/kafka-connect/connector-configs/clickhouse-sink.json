@@ -1,0 +1,22 @@
+{
+    "name": "clickhouse-sink-connector",
+    "config": {
+      "connector.class": "com.clickhouse.kafka.connect.ClickHouseSinkConnector",
+      "tasks.max": "1",
+      "topics": "pg.public.ratings,pg.public.book_rating_stats",
+      "clickhouse.server.url": "http://clickhouse:8123",
+      "clickhouse.server.database": "${CLICKHOUSE_DB}",
+      "clickhouse.server.username": "${CLICKHOUSE_USERNAME}",
+      "clickhouse.server.password": "${CLICKHOUSE_PASSWORD}",
+      "clickhouse.table.name": "ratings_raw,book_stats_raw",
+      "clickhouse.retry.count": "3",
+      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false",
+      "transforms": "addFields",
+      "transforms.addFields.type": "org.apache.kafka.connect.transforms.InsertField$Value",
+      "transforms.addFields.offset.field": "_kafka_offset",
+      "transforms.addFields.partition.field": "_kafka_partition",
+      "transforms.addFields.timestamp.field": "_kafka_timestamp"
+    }
+  }

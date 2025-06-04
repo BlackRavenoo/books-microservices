@@ -1,0 +1,21 @@
+{
+    "name": "debezium-pg-connector-ratings",
+    "config": {
+        "topic.prefix": "pg",
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "tasks.max": "1",
+        "database.hostname": "postgres",
+        "database.port": 5432,
+        "database.user": "${POSTGRES_USER}",
+        "database.password": "${POSTGRES_PASSWORD}",
+        "database.dbname": "${POSTGRES_DB}",
+        "database.server.name": "book_catalog",
+        "table.include.list": "public.ratings,public.book_rating_stats",
+        "plugin.name": "pgoutput",
+        "slot.name": "debezium_ratings_slot",
+        "transforms": "unwrap",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.unwrap.delete.handling.mode": "rewrite"
+    }
+}
