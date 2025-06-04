@@ -1,5 +1,5 @@
 export interface BookPreview {
-    id: string;
+    id: number;
     title: string;
     thumbnail: string;
     avg_rating: number;
@@ -53,7 +53,7 @@ export interface Rating {
 }
 
 export interface Book {
-    id: string;
+    id: number;
     title: string;
     cover: string;
     description: string;
