@@ -57,6 +57,12 @@ pub struct UserIdSchema {
     pub user_id: Option<i32>
 }
 
+#[derive(Deserialize)]
+pub struct RateInputSchema {
+    pub score: i16,
+    pub item_id: i32,
+}
+
 // Output
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -143,4 +149,11 @@ pub struct ChapterFullSchema {
 #[derive(Serialize)]
 pub struct BulkGetSchema {
     pub ids: Vec<i32>
+}
+
+#[derive(Serialize)]
+pub struct RateOutputSchema {
+    pub score: i16,
+    pub item_id: i32,
+    pub user_id: i32
 }

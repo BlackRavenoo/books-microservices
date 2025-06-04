@@ -6,7 +6,7 @@ use reqwest::{redirect::Policy, Client, Url};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookRatingSchema, BookSchema, BulkGetSchema, ChapterFullSchema, ConstantsSchema, GetListSchema, InputChapterSchema, PaginationSchema, SearchQuery, UserIdSchema}};
+use crate::{config::ServicesSettings, error::ApiError, schema::{Author, BookFullSchema, BookRatingSchema, BookSchema, BulkGetSchema, ChapterFullSchema, ConstantsSchema, GetListSchema, InputChapterSchema, PaginationSchema, RateInputSchema, RateOutputSchema, SearchQuery, UserIdSchema}};
 
 pub struct ServiceClient {
     client: Client,
@@ -257,6 +257,39 @@ impl ServiceClient {
     pub async fn get_chapters_list(&self, book_id: u64) -> Result<Vec<ChapterFullSchema>, ApiError> {
         let url = format!("{}/api/v1/books/{}/chapters", self.config.book_catalog.url, book_id);
         self.make_request(&url, &self.config.book_catalog.name, reqwest::Method::GET, None::<&()>, None::<&()>).await
+    }
+
+    pub async fn rate(&self, schema: &RateInputSchema, user_id: i32) -> Result<(), ApiError> {
+        let url = format!("{}/ratings/rate", self.config.ratings.url);
+
+        let result = self.client
+            .post(&url)
+            .json(&RateOutputSchema {
+                score: schema.score,
+                item_id: schema.item_id,
+                user_id,
+            })
+            .send()
+            .await;
+
+        match result {
+            Ok(response) => {
+                if response.status().is_success() {
+                    Ok(())
+                } else {
+                    Err(ApiError::ServiceError(format!(
+                        "{} returned error status: {}. Message: {}",
+                        self.config.ratings.name, 
+                        response.status(),
+                        response.text().await.unwrap_or_default()
+                    )))
+                }
+            },
+            Err(e) => {
+                tracing::error!("Failed to rate: {:?}", e);
+                Err(ApiError::ServiceError("Invalid response".to_string()))
+            },
+        }
     }
 
     #[inline]
