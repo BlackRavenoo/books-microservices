@@ -4,12 +4,13 @@ use book::{get_book, get_books, search_authors, search_book, get_constants};
 use chapter::{get_chapter, get_chapters};
 use entity::{create_entity, delete_entity, update_entity};
 
-use crate::auth::middleware::JwtMiddleware;
+use crate::{auth::middleware::JwtMiddleware, routes::ratings::rate};
 
 pub mod book;
 pub mod author;
 pub mod entity;
 pub mod chapter;
+pub mod ratings;
 
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg
@@ -49,6 +50,11 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             web::scope("/search")
                 .route("/books", web::get().to(search_book))
                 .route("/authors", web::get().to(search_authors))
+        )
+        .service(
+            web::scope("/ratings")
+                .wrap(JwtMiddleware::default())
+                .route("/rate", web::post().to(rate))
         )
         .route("/constants", web::get().to(get_constants));
 }
