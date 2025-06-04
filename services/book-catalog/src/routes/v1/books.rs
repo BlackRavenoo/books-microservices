@@ -224,7 +224,7 @@ pub async fn get_book(
         )
         .column_as(
             Expr::cust(
-                "(SELECT COUNT(*) FROM chapters WHERE chapters.book_id = id)",
+                "(SELECT COUNT(*) FROM chapters WHERE chapters.book_id = books.id)",
             ),
             "chapters_count"
         )
