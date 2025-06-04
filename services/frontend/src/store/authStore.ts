@@ -69,14 +69,6 @@ function createAuthStore() {
             
             set({ user, token });
         },
-        isAuthenticated: () => {
-            const state = get(authStore);
-            return state.user !== null && state.token !== null;
-        },
-        isAdmin: () => {
-            const state = get(authStore);
-            return state.user?.roles?.includes('admin') || false;
-        },
         isTokenExpired: () => {
             const state = get(authStore);
             if (!state.token?.access_token) return true;

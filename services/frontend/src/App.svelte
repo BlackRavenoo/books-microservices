@@ -1,8 +1,8 @@
 <script lang="ts">
     import { Router, Route } from "svelte-routing";
-    import { onMount } from 'svelte';
+    import { onDestroy, onMount } from 'svelte';
     import { authStore } from './store/authStore';
-    import { isTokenExpired, refreshAccessToken, getUserInfo } from './utils/auth';
+    import { tokenManager } from './tokenManager';
     
     import Home from "./routes/Home.svelte";
     import BookPage from "./routes/BookPage.svelte";
@@ -25,25 +25,12 @@
     onMount(() => {
         authStore.initialize();
         
-        authStore.subscribe(state => {
-            if (state.token && isTokenExpired(state.token)) {
-                refreshTokens(state.token.refresh_token);
-            }
-        });
+        tokenManager.start();
     });
     
-    async function refreshTokens(refreshToken: string) {
-        try {
-            const newToken = await refreshAccessToken(refreshToken);
-            authStore.setTokens(newToken.access_token, newToken.refresh_token, newToken.token_type);
-            
-            const user = await getUserInfo(newToken);
-            authStore.setUser(user);
-        } catch (e) {
-            console.error("Failed to refresh token:", e);
-            authStore.logout();
-        }
-    }
+    onDestroy(() => {
+        tokenManager.destroy();
+    });
 </script>
 
 <Router {url}>
