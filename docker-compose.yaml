@@ -41,7 +41,7 @@ services:
 
   connect:
     build:
-      context: ./kafka-connect
+      context: ./infra/kafka-connect
     depends_on:
       - kafka
       - elasticsearch
@@ -63,11 +63,14 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_DB=${METADATA_DB:-book_catalog}
       - RATINGS_DB_NAME=${RATINGS_DB_NAME:-ratings_service}
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-password}
     ports:
       - "8083:8083"
     volumes:
-      - ./kafka-connect/connector-configs:/etc/kafka-connect/connector-configs
-      - ./kafka-connect/start-connect.sh:/etc/kafka-connect/start-connect.sh
+      - ./infra/kafka-connect/connector-configs:/etc/kafka-connect/connector-configs
+      - ./infra/kafka-connect/start-connect.sh:/etc/kafka-connect/start-connect.sh
     command: ["bash", "/etc/kafka-connect/start-connect.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/"]
@@ -139,6 +142,20 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.5
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./infra/clickhouse:/docker-entrypoint-initdb.d
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-password}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
 
   book-catalog:
     build:
@@ -224,3 +241,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  clickhouse-data:
