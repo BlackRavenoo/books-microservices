@@ -1,9 +1,15 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { fetchChapter, fetchBookChapters } from '../api';
+    import { bookStore, type BookState } from '../store/bookStore';
     import { link } from 'svelte-routing';
     
     export let bookId: string;
+
+    let bookState: BookState;
+    const unsubscribe = bookStore.subscribe(state => {
+        bookState = state;
+    });
     
     let chapter: any = null;
     let allChapters: any[] = [];
@@ -51,7 +57,12 @@
     
     async function loadChaptersList() {
         try {
-            allChapters = await fetchBookChapters(bookId);
+            if (bookState.chapters.length > 0 && String(bookState.currentBook?.id) === bookId) {
+                allChapters = bookState.chapters;
+            } else {
+                allChapters = await fetchBookChapters(bookId);
+                bookStore.setChapters(allChapters);
+            }
             if (chapter) {
                 currentIndex = allChapters.findIndex(c => c.index === chapter.index);
                 nextChapter = allChapters[currentIndex + 1] || null;
