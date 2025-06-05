@@ -189,7 +189,7 @@ pub async fn create_author(
     }
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Ok().body("Author created!"),
+        Ok(_) => HttpResponse::Created().body("Author created!"),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()

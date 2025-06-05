@@ -384,7 +384,7 @@ pub async fn create_book(
     };
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Ok().body("Book created!"),
+        Ok(_) => HttpResponse::Created().body("Book created!"),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()

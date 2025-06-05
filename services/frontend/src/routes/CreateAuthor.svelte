@@ -71,7 +71,7 @@
     {:else}
         <form on:submit|preventDefault={handleSubmit} class="author-form">
             <div class="form-group cover-upload">
-                <label for="cover">Аватар автора</label>
+                <label for="cover">Аватар автора (необязательно)</label>
                 <div class="upload-container">
                     {#if coverPreview}
                         <div class="cover-preview">
