@@ -66,6 +66,7 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}
       - CLICKHOUSE_USER=${CLICKHOUSE_USERNAME:-default}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-password}
+      - RATINGS_DB=${RATINGS_DB-ratings_service}
     ports:
       - "8083:8083"
     volumes:

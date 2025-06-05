@@ -32,7 +32,7 @@ for config_file in /etc/kafka-connect/connector-configs/*.json; do
   connector_name=$(basename "$config_file" .json)
   echo "Creating connector from $config_file..."
 
-  envsubst '${POSTGRES_PASSWORD},${POSTGRES_USER},${POSTGRES_DB}, ${RATINGS_DB_NAME}, ${CLICKHOUSE_USERNAME}, ${CLICKHOUSE_PASSWORD}, ${CLICKHOUSE_DB}' < "$config_file" > /tmp/connector.json
+  envsubst '${POSTGRES_PASSWORD},${POSTGRES_USER},${POSTGRES_DB}, ${RATINGS_DB_NAME}, ${CLICKHOUSE_USERNAME}, ${CLICKHOUSE_PASSWORD}, ${CLICKHOUSE_DB}, ${RATINGS_DB}' < "$config_file" > /tmp/connector.json
   
   response=$(curl -s -X POST -H "Content-Type: application/json" \
     --data @/tmp/connector.json http://localhost:8083/connectors)
