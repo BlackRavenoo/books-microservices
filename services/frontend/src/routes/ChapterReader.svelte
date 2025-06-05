@@ -92,13 +92,18 @@
     }
     
     async function loadBookInfo() {
-        try {
-            const book = await fetchBookDetails(bookId);
-            if (book) {
-                bookStore.setBookData(book);
+        if (!bookState.isLoaded) {
+            try {
+                const book = await fetchBookDetails(bookId);
+                if (book) {
+                    bookStore.setBookData(book);
+                }
+            } catch (err) {
+                console.error("Failed to load book info:", err)
             }
-        } catch (err) {
-            console.error("Failed to load book info:", err)
+        }
+        if (bookState.currentBook) {
+            bookTitle = bookState.currentBook.title;
         }
     }
 
