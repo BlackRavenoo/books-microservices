@@ -21,12 +21,47 @@
     import ChapterReader from "./routes/ChapterReader.svelte";
 
     export let url = "";
+
+    let currentPath = "";
     
     onMount(() => {
         authStore.initialize();
         
         tokenManager.start();
+
+        updateCurrentPath();
+
+        const handleNavigation = () => {
+            updateCurrentPath();
+        };
+
+        window.addEventListener('popstate', handleNavigation);
+
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        
+        history.pushState = function(...args) {
+            originalPushState.apply(history, args);
+            setTimeout(updateCurrentPath, 0);
+        };
+        
+        history.replaceState = function(...args) {
+            originalReplaceState.apply(history, args);
+            setTimeout(updateCurrentPath, 0);
+        };
+        
+        return () => {
+            window.removeEventListener('popstate', handleNavigation);
+            history.pushState = originalPushState;
+            history.replaceState = originalReplaceState;
+        };
     });
+
+    function updateCurrentPath() {
+        currentPath = window.location.pathname;
+    }
+
+    $: isChapterReader = currentPath.includes('/chapter') && !currentPath.includes('/chapters');
     
     onDestroy(() => {
         tokenManager.destroy();
@@ -35,7 +70,9 @@
 
 <Router {url}>
     <div class="app">
-        <Header />
+        {#if !isChapterReader}
+            <Header />
+        {/if}
         <main>
             <Route path="/" component={Home} />
             <Route path="/catalog" component={Catalog} />
@@ -52,7 +89,9 @@
             <Route path="/book/:bookId/chapters/:index/edit" component="{ChapterEditor}" />
             <Route path="/book/:bookId/chapter" component="{ChapterReader}" />
         </main>
-        <Footer />
+        {#if !isChapterReader}
+            <Footer />
+        {/if}
     </div>
 </Router>
   
