@@ -384,7 +384,9 @@ pub async fn create_book(
     };
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Created().body("Book created!"),
+        Ok(_) => HttpResponse::Created().json(serde_json::json!({
+            "id": book_id
+        })),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
@@ -589,6 +591,10 @@ pub async fn delete_book(
     match book {
         Ok(Some(book)) => {
             let cover = book.cover;
+            // TODO: Delete all chapters from storage
+
+            
+
             if let Err(e) = book::Entity::delete_by_id(id)
                 .exec(db.as_ref()).await {
                     tracing::error!("Failed to delete book: {:?}", e);

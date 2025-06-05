@@ -37,6 +37,7 @@
                 if (book.rating?.user) {
                     userRating = book.rating.user;
                 }
+                bookStore.clear();
                 bookStore.setBookData(book);
             }
         } catch (e) {

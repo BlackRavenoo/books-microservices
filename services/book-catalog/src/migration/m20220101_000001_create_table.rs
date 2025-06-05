@@ -144,6 +144,12 @@ impl MigrationTrait for Migration {
                 .col(string(Chapter::Name).not_null())
                 .col(string(Chapter::Key).not_null())
                 .col(timestamp_with_time_zone(Chapter::CreatedAt).not_null().default(Expr::current_timestamp()))
+                .foreign_key(
+                    ForeignKey::create()
+                        .from(Chapter::Table, Chapter::BookId)
+                        .to(Book::Table, Book::Id)
+                        .on_delete(ForeignKeyAction::Cascade)
+                )
                 .to_owned()
         )
         .await?;

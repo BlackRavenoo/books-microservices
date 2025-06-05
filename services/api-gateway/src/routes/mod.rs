@@ -27,6 +27,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/chapter", web::post().to(create_entity))
                     .route("/{id}/chapter", web::put().to(update_entity))
                     .route("/{id}/chapter", web::delete().to(delete_entity))
+                    .route("/{id}", web::delete().to(delete_entity))
                     .route("/{id}", web::put().to(update_entity))
             )
         )

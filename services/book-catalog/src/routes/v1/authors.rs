@@ -170,8 +170,8 @@ pub async fn create_author(
         },
     };
     
-    match author.insert(&transaction).await {
-        Ok(_) => (),
+    let author_id = match author.insert(&transaction).await {
+        Ok(author) => author.id,
         Err(e) => {
             tracing::error!("Failed to insert book: {:?}", e);
             return HttpResponse::InternalServerError().finish();
@@ -189,7 +189,9 @@ pub async fn create_author(
     }
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Created().body("Author created!"),
+        Ok(_) => HttpResponse::Created().json(serde_json::json!({
+            "id": author_id
+        })),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
@@ -219,13 +221,16 @@ pub async fn delete_author(
                     tracing::error!("Failed to delete author: {:?}", e);
                     return HttpResponse::InternalServerError().finish();
                 };
-        
-            match storage.delete_by_url(&cover).await {
-                Ok(_) => (),
-                Err(e) => {
-                    tracing::error!("Failed to delete author cover: {:?}", e)
-                },
+
+            if cover != storage.get_placeholder_url(StorageId::AuthorCover as u32) {
+                match storage.delete_by_url(&cover).await {
+                    Ok(_) => (),
+                    Err(e) => {
+                        tracing::error!("Failed to delete author cover: {:?}", e)
+                    },
+                };
             };
+        
 
             HttpResponse::Ok().finish()
         }
