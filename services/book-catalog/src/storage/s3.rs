@@ -28,6 +28,7 @@ impl S3StorageBackend {
         }
     }
 
+    #[inline(always)]
     fn generate_key(&self, storage_id: u32, object_id: Uuid, extension: &str) -> String {
         format!("{}/{}.{}", storage_id, object_id, extension)
     }
@@ -136,6 +137,7 @@ impl S3StorageBackend {
         None
     }
 
+    #[inline(always)]
     pub fn get_object_url(
         &self,
         storage_id: u32,
@@ -155,5 +157,17 @@ impl S3StorageBackend {
         image_id: Uuid
     ) -> String {
         self.get_object_url(storage_id, image_id, "jpg")
+    }
+
+    pub fn get_placeholder_url(
+        &self,
+        storage_id: u32
+    ) -> String {
+        format!(
+            "{}/{}/{}",
+            self.bucket.url(),
+            storage_id,
+            "placeholder.jpg"
+        )
     }
 }

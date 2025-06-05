@@ -105,7 +105,7 @@ pub struct CreateAuthorSchema {
 #[derive(MultipartForm)]
 pub struct CreateAuthorForm {
     #[multipart(limit = "5MB")]
-    pub cover: TempFile,
+    pub cover: Option<TempFile>,
     pub fields: Json<CreateAuthorSchema>
 }
 

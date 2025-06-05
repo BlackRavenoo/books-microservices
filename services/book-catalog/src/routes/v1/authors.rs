@@ -126,28 +126,35 @@ pub async fn create_author(
     storage: web::Data<S3StorageBackend>,
     MultipartForm(form): MultipartForm<CreateAuthorForm>
 ) -> impl Responder {
-    let mut cover = form.cover;
+    let cover = form.cover;
     let name = form.fields.0.name;
     let storage_id = StorageId::AuthorCover as u32;
-
-    let mut buf = Vec::new();
-
-    if let Err(e) = cover.file.read_to_end(&mut buf) {
-        tracing::error!("Failed to read uploaded cover file: {:?}", e);
-        return HttpResponse::BadRequest().body("Could not read uploaded file");
-    }
-
-    let image = match process_image(&buf, 375) {
-        Ok(image) => image,
-        Err(e) => {
-            tracing::error!("Failed to process image: {:?}", e);
-            return HttpResponse::BadRequest().body("Could not process uploaded image")
-        },
-    };
-
     let id = Uuid::new_v4();
 
-    let url = storage.get_image_url(storage_id, id);
+    let (image, url) = match cover {
+        Some(mut cover) => {
+            let mut buf = Vec::new();
+        
+            if let Err(e) = cover.file.read_to_end(&mut buf) {
+                tracing::error!("Failed to read uploaded cover file: {:?}", e);
+                return HttpResponse::BadRequest().body("Could not read uploaded file");
+            }
+        
+            let image = match process_image(&buf, 375) {
+                Ok(image) => image,
+                Err(e) => {
+                    tracing::error!("Failed to process image: {:?}", e);
+                    return HttpResponse::BadRequest().body("Could not process uploaded image")
+                },
+            };
+        
+            let url = storage.get_image_url(storage_id, id);
+
+            (Some(image), url)
+        },
+        None => (None, storage.get_placeholder_url(storage_id)),
+    };
+
 
     let author = author::ActiveModel {
         name: Set(name),
@@ -171,16 +178,18 @@ pub async fn create_author(
         },
     };
 
-    match storage.save(storage_id, id, image, "image/jpeg", "jpg").await {
-        Ok(_) => (),
-        Err(e) => {
-            tracing::error!("Failed to upload cover {:?}", e);
-            return HttpResponse::InternalServerError().finish()
-        }
-    };
+    if let Some(image) = image {
+        match storage.save(storage_id, id, image, "image/jpeg", "jpg").await {
+            Ok(_) => (),
+            Err(e) => {
+                tracing::error!("Failed to upload cover {:?}", e);
+                return HttpResponse::InternalServerError().finish()
+            }
+        };
+    }
 
     match transaction.commit().await {
-        Ok(_) => HttpResponse::Ok().body("Book created!"),
+        Ok(_) => HttpResponse::Ok().body("Author created!"),
         Err(e) => {
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
