@@ -145,7 +145,7 @@ where
                 Ok(claims) => claims,
                 Err(e) => {
                     tracing::warn!("JWT validation failed: {}", e);
-                    return Ok(create_error_response(req, &format!("Invalid token: {}", e), StatusCode::UNAUTHORIZED));
+                    return Ok(create_error_response(req, &e.to_string(), StatusCode::UNAUTHORIZED));
                 }
             };
 
