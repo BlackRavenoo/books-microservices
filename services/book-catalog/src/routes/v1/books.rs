@@ -3,7 +3,7 @@ use std::io::Read;
 use actix_multipart::form::MultipartForm;
 use actix_web::{web, HttpResponse, Responder};
 use cache::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, TransactionTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, DerivePartialModel, EntityTrait, FromQueryResult, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, QueryTrait, RelationTrait, TransactionTrait};
 use uuid::Uuid;
 use serde_qs::actix::QsQuery;
 
@@ -14,6 +14,12 @@ use crate::{
 };
 
 const DEFAULT_PAGE_SIZE: u64 = 50;
+
+#[derive(FromQueryResult, DerivePartialModel)]
+#[sea_orm(entity = "book::Entity")]
+struct BookCover {
+    cover: String
+}
 
 pub async fn get_books(db: web::Data<DatabaseConnection>, query: QsQuery<GetListSchema>) -> impl Responder {
     let query = query.into_inner();
@@ -563,5 +569,47 @@ pub async fn update_book(
             tracing::error!("Failed to commit transaction: {:?}", e);
             HttpResponse::InternalServerError().finish()
         },
+    }
+}
+
+pub async fn delete_book(
+    db: web::Data<DatabaseConnection>,
+    storage: web::Data<S3StorageBackend>,
+    path: web::Path<i32>,
+) -> impl Responder {
+    let id = path.into_inner();
+
+    let book = book::Entity::find_by_id(id)
+        .select_only()
+        .column(book::Column::Cover)
+        .into_partial_model::<BookCover>()
+        .one(db.as_ref())
+        .await;
+
+    match book {
+        Ok(Some(book)) => {
+            let cover = book.cover;
+            if let Err(e) = book::Entity::delete_by_id(id)
+                .exec(db.as_ref()).await {
+                    tracing::error!("Failed to delete book: {:?}", e);
+                    return HttpResponse::InternalServerError().finish();
+                };
+        
+            match storage.delete_by_url(&cover).await {
+                Ok(_) => (),
+                Err(e) => {
+                    tracing::error!("Failed to delete book cover: {:?}", e)
+                },
+            };
+
+            HttpResponse::Ok().finish()
+        }
+        Ok(None) => {
+            HttpResponse::NotFound().body("Book not found")
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get book: {:?}", e);
+            HttpResponse::InternalServerError().finish()
+        }
     }
 }

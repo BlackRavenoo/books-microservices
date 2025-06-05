@@ -1,6 +1,6 @@
 use actix_web::web;
 use authors::{create_author, delete_author, get_author, update_author};
-use books::{create_book, get_book, get_books, update_book};
+use books::{create_book, get_book, get_books, update_book, delete_book};
 use chapters::{create_chapter, delete_chapter, get_chapter, get_chapters, update_chapter};
 use constants::get_constants;
 use search::{search_authors, search_books};
@@ -25,6 +25,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                     .route("/{id}/chapter", web::delete().to(delete_chapter))
                     .route("/{id}", web::get().to(get_book))
                     .route("/{id}", web::put().to(update_book))
+                    .route("/{id}", web::delete().to(delete_book))
             )
             .service(
                 web::scope("/authors")
