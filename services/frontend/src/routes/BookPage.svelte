@@ -32,8 +32,6 @@
     
     onMount(async () => {
         try {
-            console.log('BookPage onMount: bookState =', bookState);
-
             book = await fetchBookDetails(id);
             if (book) {
                 if (book.rating?.user) {
