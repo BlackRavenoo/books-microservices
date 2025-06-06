@@ -283,7 +283,7 @@ export async function updateChapter(bookId: string, chapterIndex: number, fields
     name?: string;
     content?: any;
     index?: number;
-}): Promise<any> {
+}): Promise<null> {
     try {
         const response = await fetchWithAuth(`${API_BASE_URL}/books/${bookId}/chapter?number=${chapterIndex}`, {
             method: 'PUT',
@@ -298,7 +298,7 @@ export async function updateChapter(bookId: string, chapterIndex: number, fields
             throw new Error(errorText || `HTTP error! Status: ${response.status}`);
         }
         
-        return await response.json();
+        return null;
     } catch (error) {
         console.error('Error updating chapter:', error);
         throw error;

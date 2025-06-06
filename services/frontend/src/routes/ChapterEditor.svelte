@@ -92,7 +92,7 @@
             isLoading = true;
             error = null;
             
-            const content = editor.getJSON();
+            const content = editor.getJSON().content;
             
             if (isEditMode && index) {
                 await updateChapter(bookId, parseInt(index), {
