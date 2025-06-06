@@ -108,6 +108,7 @@ pub struct BookFullSchema {
     pub genres: Vec<Genre>,
     pub authors: Vec<Author>,
     pub chapters_count: i16,
+    pub first_chapter_key: Option<i16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rating: Option<Rating>
 }

@@ -183,7 +183,8 @@ pub struct BookFullSchema {
     pub tags: Vec<Tag>,
     pub genres: Vec<Genre>,
     pub authors: Vec<Author>,
-    pub chapters_count: i16
+    pub chapters_count: i16,
+    pub first_chapter_key: Option<i16>
 }
 
 #[derive(Serialize)]

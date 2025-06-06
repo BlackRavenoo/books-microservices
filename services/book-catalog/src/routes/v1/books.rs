@@ -234,6 +234,12 @@ pub async fn get_book(
             ),
             "chapters_count"
         )
+        .column_as(
+            Expr::cust(
+                "(SELECT index FROM chapters WHERE chapters.book_id = books.id ORDER BY index LIMIT 1)"
+            ),
+            "first_chapter_key"
+        )
         .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Book.def().rev())
         .join(sea_orm::JoinType::LeftJoin, book_tag::Relation::Tag.def())
         .join(sea_orm::JoinType::LeftJoin, book_genre::Relation::Book.def().rev())
@@ -591,9 +597,27 @@ pub async fn delete_book(
     match book {
         Ok(Some(book)) => {
             let cover = book.cover;
-            // TODO: Delete all chapters from storage
 
-            
+            let chapters = chapter::Entity::find()
+                .filter(chapter::Column::BookId.eq(id))
+                .select_only()
+                .column(chapter::Column::Key)
+                .into_tuple::<String>()
+                .all(db.as_ref())
+                .await;
+
+                match chapters {
+                    Ok(chapter_keys) => {
+                        for key in chapter_keys {
+                            if let Err(e) = storage.delete_by_key(&key).await {
+                                tracing::error!("Failed to delete chapter with key '{}': {:?}", key, e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to fetch chapters for deletion: {:?}", e);
+                    }
+                }
 
             if let Err(e) = book::Entity::delete_by_id(id)
                 .exec(db.as_ref()).await {
