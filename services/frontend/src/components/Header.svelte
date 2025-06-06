@@ -229,7 +229,7 @@
                         <div class="search-results">
                             {#if searchType === 'books' && bookResults.length > 0}
                                 {#each bookResults as result}
-                                    <a href={`/book/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
+                                    <a href={`/book/${result.id}`} class="search-result-item" on:click={toggleSearchBar}>
                                         <img src={result.thumbnail} alt={result.title} class="result-cover" />
                                         <div class="result-info">
                                             <div class="result-title">{result.title}</div>
@@ -239,7 +239,7 @@
                                 {/each}
                             {:else if searchType === 'authors' && authorResults.length > 0}
                                 {#each authorResults as result}
-                                    <a href={`/author/${result.id}`} use:link class="search-result-item" on:click={toggleSearchBar}>
+                                    <a href={`/author/${result.id}`} class="search-result-item" on:click={toggleSearchBar}>
                                         <img src={result.cover} alt={result.name} class="result-cover author-cover" />
                                         <div class="result-info">
                                             <div class="result-title">{result.name}</div>
