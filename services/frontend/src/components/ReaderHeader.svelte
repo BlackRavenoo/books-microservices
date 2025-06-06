@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { link } from 'svelte-routing';
+    import { link, navigate } from 'svelte-routing';
     import { writable } from 'svelte/store';
     import { onMount } from 'svelte';
     
@@ -102,6 +102,18 @@
     }
     
     $: chapterInfo = currentChapter ? `Глава ${currentChapter.index}` : '';
+
+    function goToPrevChapter() {
+        if (prevChapter) {
+            navigate(`/book/${bookId}/chapter?number=${prevChapter.index}`);
+        }
+    }
+    
+    function goToNextChapter() {
+        if (nextChapter) {
+            navigate(`/book/${bookId}/chapter?number=${nextChapter.index}`);
+        }
+    }
 </script>
 
 <header class="reader-header">
@@ -123,7 +135,7 @@
         <button 
             class="nav-chapter" 
             disabled={!prevChapter}
-            on:click={() => prevChapter && window.location.assign(`/book/${bookId}/chapter?number=${prevChapter.index}`)}
+            on:click={goToPrevChapter}
         >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
@@ -135,7 +147,7 @@
         <button 
             class="nav-chapter" 
             disabled={!nextChapter}
-            on:click={() => nextChapter && window.location.assign(`/book/${bookId}/chapter?number=${nextChapter.index}`)}
+            on:click={goToNextChapter}
         >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>

@@ -22,26 +22,53 @@
     let prevChapter: any = null;
 
     let bookTitle = '';
-    
-    onMount(async () => {
+    let currentChapterNumber: number | null = null;
+    let currentUrl = '';
+
+    $: {
+        if (typeof window !== 'undefined') {
+            const newUrl = window.location.href;
+            if (newUrl !== currentUrl) {
+                currentUrl = newUrl;
+                handleUrlChange();
+            }
+        }
+    }
+
+
+    function getChapterNumberFromUrl(): number | null {
         const urlParams = new URLSearchParams(window.location.search);
         const numberParam = urlParams.get('number');
-        
-        if (!numberParam) {
+        return numberParam ? parseInt(numberParam) : null;
+    }
+
+    async function handleUrlChange() {
+        const urlChapterNumber = getChapterNumberFromUrl();
+        if (urlChapterNumber !== currentChapterNumber && urlChapterNumber !== null) {
+            currentChapterNumber = urlChapterNumber;
+            await loadChapterData(urlChapterNumber);
+        }
+    }
+
+    const handlePopState = () => {
+        handleUrlChange();
+    };
+
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    onMount(async () => {
+        currentUrl = window.location.href;
+        const chapterNumber = getChapterNumberFromUrl();
+
+        if (!chapterNumber) {
             error = true;
             loading = false;
             console.error('Chapter number not provided');
             return;
         }
         
-        const chapterNumber = parseInt(numberParam);
-        
-        if (isNaN(chapterNumber)) {
-            error = true;
-            loading = false;
-            console.error('Invalid chapter number');
-            return;
-        }
+        currentChapterNumber = chapterNumber;
 
         const saved = localStorage.getItem('readerSettings');
         if (saved) {
@@ -63,11 +90,64 @@
         await loadBookInfo();
         await loadChapter(chapterNumber);
         await loadChaptersList();
+        
+        window.addEventListener('popstate', handlePopState);
+        
+        history.pushState = function(...args) {
+            originalPushState.apply(history, args);
+            setTimeout(() => handleUrlChange(), 0);
+        };
+        
+        history.replaceState = function(...args) {
+            originalReplaceState.apply(history, args);
+            setTimeout(() => handleUrlChange(), 0);
+        };
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            history.pushState = originalPushState;
+            history.replaceState = originalReplaceState;
+        };
     });
+
+    async function loadChapterData(chapterNumber: number) {
+        if (isNaN(chapterNumber)) {
+            error = true;
+            loading = false;
+            console.error('Invalid chapter number');
+            return;
+        }
+
+        loading = true;
+        error = false;
+        
+        try {
+            chapter = await fetchChapter(bookId, chapterNumber);
+            if (allChapters.length > 0) {
+                updateNavigation();
+            }
+        } catch (err) {
+            error = true;
+            console.error(err);
+        } finally {
+            loading = false;
+        }
+    }
+    
+    function updateNavigation() {
+        if (chapter && allChapters.length > 0) {
+            currentIndex = allChapters.findIndex(c => c.index === chapter.index);
+            nextChapter = allChapters[currentIndex + 1] || null;
+            prevChapter = allChapters[currentIndex - 1] || null;
+        }
+    }
 
     onDestroy(() => {
         document.body.style.backgroundColor = '';
         document.body.style.color = '';
+        history.pushState = originalPushState;
+        history.replaceState = originalReplaceState;
+        window.removeEventListener('popstate', handlePopState);
         unsubscribe();
     });
 
@@ -126,20 +206,16 @@
                 allChapters = await fetchBookChapters(bookId);
                 bookStore.setChapters(allChapters);
             }
-            if (chapter) {
-                currentIndex = allChapters.findIndex(c => c.index === chapter.index);
-                nextChapter = allChapters[currentIndex + 1] || null;
-                prevChapter = allChapters[currentIndex - 1] || null;
-            }
+            updateNavigation();
         } catch (err) {
             console.error('Failed to load chapters list:', err);
         }
     }
     
     function renderContent(content: any): string {
-        if (!content || !content.content) return '';
+        if (!content) return '';
         
-        return content.content.map((node: any) => renderNode(node)).join('');
+        return content.map((node: any) => renderNode(node)).join('');
     }
     
     function renderNode(node: any): string {
