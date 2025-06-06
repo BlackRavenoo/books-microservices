@@ -10,6 +10,7 @@
         "database.password": "${POSTGRES_PASSWORD}",
         "database.dbname": "${RATINGS_DB}",
         "database.server.name": "book_catalog",
+        "publication.autocreate.mode": "filtered",
         "table.include.list": "public.ratings,public.book_rating_stats",
         "plugin.name": "pgoutput",
         "slot.name": "debezium_ratings_slot",

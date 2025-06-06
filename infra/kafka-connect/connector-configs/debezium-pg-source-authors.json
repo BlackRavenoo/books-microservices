@@ -10,6 +10,7 @@
         "database.password": "${POSTGRES_PASSWORD}",
         "database.dbname": "${POSTGRES_DB}",
         "database.server.name": "book_catalog",
+        "publication.autocreate.mode": "filtered",
         "table.include.list": "public.authors",
         "plugin.name": "pgoutput",
         "slot.name": "debezium_authors_slot",
