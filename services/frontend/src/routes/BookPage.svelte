@@ -148,18 +148,30 @@
                     {/if}
                 </div>
                 
-                <button class="read-button" class:disabled={book.chapters_count === 0}>
-                    <div class="read-button-content">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                        </svg>
-                        <span>{book.chapters_count > 0 ? 'Начать читать' : 'Нет глав'}</span>
+                {#if book.first_chapter_key}
+                    <a href="/book/{id}/chapter?number={book.first_chapter_key}" use:link class="read-button">
+                        <div class="read-button-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            </svg>
+                            <span>Начать читать</span>
+                        </div>
+                        {#if book.chapters_count > 0}
+                            <span class="reading-progress">0/{book.chapters_count}</span>
+                        {/if}
+                    </a>
+                {:else}
+                    <div class="read-button disabled">
+                        <div class="read-button-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                            </svg>
+                            <span>Нет глав</span>
+                        </div>
                     </div>
-                    {#if book.chapters_count > 0}
-                        <span class="reading-progress">0/{book.chapters_count}</span>
-                    {/if}
-                </button>
+                {/if}
             </div>
 
             <div class="book-info-section">
@@ -386,22 +398,40 @@
         color: white;
         border: none;
         border-radius: 0.5rem;
-        padding: 1rem 2rem;
+        padding: 1rem 1.5rem;
         font-size: 1.1rem;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        justify-content: space-between;
         width: 100%;
-        justify-content: center;
+        text-decoration: none;
     }
     
     .read-button:hover {
         background-color: var(--secondary-color);
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .read-button:hover:not(.disabled) {
+        background-color: var(--secondary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+
+    .read-button.disabled {
+        background-color: var(--text-muted);
+        cursor: not-allowed;
+        justify-content: center;
+    }
+    
+    .read-button.disabled:hover {
+        transform: none;
+        box-shadow: none;
     }
     
     .book-info-section {
@@ -789,39 +819,6 @@
         background-color: var(--text-muted);
         cursor: not-allowed;
         opacity: 0.5;
-    }
-
-    .read-button {
-        background-color: var(--primary-color);
-        color: white;
-        border: none;
-        border-radius: 0.5rem;
-        padding: 1rem 1.5rem;
-        font-size: 1.1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-    }
-    
-    .read-button:hover:not(.disabled) {
-        background-color: var(--secondary-color);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    .read-button.disabled {
-        background-color: var(--text-muted);
-        cursor: not-allowed;
-        justify-content: center;
-    }
-    
-    .read-button.disabled:hover {
-        transform: none;
-        box-shadow: none;
     }
     
     .read-button-content {

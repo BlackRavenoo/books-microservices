@@ -63,6 +63,7 @@ export interface Book {
     authors: Author[];
     chapters_count: number;
     series_id: number | null;
+    first_chapter_key?: number;
     rating?: Rating;
 }
 
