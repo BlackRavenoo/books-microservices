@@ -8,13 +8,13 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_MULTIPLE_DATABASES=${METADATA_DB:-book_catalog},${AUTH_DB:-auth_service},${RATINGS_DB:-ratings_service}
+      - POSTGRES_MULTIPLE_DATABASES=${METADATA_DB:-book_catalog},${AUTH_DB:-auth_service},${RATINGS_DB:-ratings_service},${SUPERSET_DB:-superset}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./infra/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
     healthcheck:
       test: pg_isready -U ${POSTGRES_USER:-postgres} -d ${METADATA_DB:-book_catalog}
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
 
@@ -75,7 +75,7 @@ services:
     command: ["bash", "/etc/kafka-connect/start-connect.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
 
@@ -91,7 +91,7 @@ services:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 5
 
@@ -158,6 +158,38 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-password}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
 
+  superset:
+    build:
+      context: ./infra/superset
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - SUPERSET_CONFIG_PATH=/app/superset_config.py
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY:-your-secret-key-here}
+      - DATABASE_DIALECT=postgresql
+      - DATABASE_USER=${POSTGRES_USER:-postgres}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_DB=${SUPERSET_DB:-superset}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./infra/superset/superset_config.py:/app/superset_config.py
+      - superset_data:/app/superset_home
+    command: >
+      bash -c "
+        superset db upgrade &&
+        superset fab create-admin --username ${SUPERSET_ADMIN_USERNAME:-admin} --password ${SUPERSET_ADMIN_PASSWORD:-admin} --email ${SUPERSET_ADMIN_EMAIL:-admin@superset.com} --firstname ${SUPERSET_ADMIN_FIRSTNAME:-Admin} --lastname ${SUPERSET_ADMIN_LASTNAME:-User} &&
+        superset init &&
+        superset run -h 0.0.0.0 -p 8088 --with-threads --reload --debugger
+      "
+
   book-catalog:
     build:
       context: .
@@ -183,7 +215,7 @@ services:
       - APP_REDIS__URL=redis://redis:6379
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
       retries: 5
 
@@ -243,3 +275,4 @@ volumes:
   prometheus_data:
   grafana_data:
   clickhouse-data:
+  superset_data:
