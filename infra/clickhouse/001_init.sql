@@ -15,7 +15,10 @@ CREATE TABLE IF NOT EXISTS analytics.book_stats_raw (
     book_id UInt32,
     total_ratings UInt32,
     sum_ratings UInt64,
-    avg_rating Decimal(4,2),
+    avg_rating Decimal(4,2) MATERIALIZED 
+        CASE WHEN total_ratings > 0 
+             THEN sum_ratings / total_ratings 
+             ELSE 0 END,
     _kafka_offset UInt64,
     _kafka_partition UInt8,
     _kafka_timestamp DateTime DEFAULT now()
