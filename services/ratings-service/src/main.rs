@@ -1,7 +1,8 @@
+use bb8_redis::{bb8::Pool, RedisConnectionManager};
 use ratings_service::config::get_config;
 use sqlx::postgres::PgPoolOptions;
 use telemetry::{get_subscriber, init_subscriber};
-use std::net::TcpListener;
+use std::{net::TcpListener, time::Duration};
 
 use ratings_service::startup::run;
 
@@ -24,5 +25,14 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, connection_pool)?.await
+    let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
+        .expect("Failed to create Redis manager");
+    
+    let redis_pool = Pool::builder()
+            .connection_timeout(Duration::from_millis(100))
+            .build(redis_manager)
+            .await
+            .expect("Failed to build Redis pool");
+
+    run(listener, connection_pool, redis_pool)?.await
 }

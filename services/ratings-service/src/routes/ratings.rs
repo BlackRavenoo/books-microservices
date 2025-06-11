@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
+use cache::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
 use sqlx::PgPool;
 
 use crate::schema::{BookRatingSchema, BulkGetSchema, GetSchema, RateSchema, RatingSchema};
@@ -6,8 +7,20 @@ use crate::schema::{BookRatingSchema, BulkGetSchema, GetSchema, RateSchema, Rati
 pub async fn get_rating(
     pool: web::Data<PgPool>,
     path: web::Path<i32>,
-    json: web::Json<GetSchema>
+    json: web::Json<GetSchema>,
+    cache: web::Data<HybridCache::<String, RatingSchema, BincodeSerializer<RatingSchema>>>
 ) -> impl Responder {
+    let path = path.into_inner();
+    let key = format!("{}_{}", path, json.user_id.unwrap_or(-1));
+    match cache.get(
+        &key,
+        Expiration::Minutes(10)
+    ).await {
+        Ok(Some(rating)) => return HttpResponse::Ok().json(rating),
+        Ok(None) => (),
+        Err(e) => tracing::error!("Failed to get rating from cache: {:?}", e),
+    };
+
     let rating = if let Some(user_id) = json.user_id {
         sqlx::query_as!(
             RatingSchema,
@@ -17,7 +30,7 @@ pub async fn get_rating(
             FROM book_rating_stats
             WHERE book_id = $1
             "#,
-            path.into_inner(),
+            path,
             user_id
         )
         .fetch_one(pool.get_ref())
@@ -30,14 +43,23 @@ pub async fn get_rating(
             FROM book_rating_stats
             WHERE book_id = $1
             "#,
-            path.into_inner()
+            path
         )
         .fetch_one(pool.get_ref())
         .await
     };
 
     match rating {
-        Ok(rating) => HttpResponse::Ok().json(rating),
+        Ok(rating) => {
+            if let Err(e) = cache.set(
+                key,
+                rating.clone(),
+                Expiration::Minutes(10)
+            ).await {
+                tracing::error!("Failed to insert book into cache: {:?}", e)
+            }
+            HttpResponse::Ok().json(rating)
+        },
         Err(e) => {
             tracing::error!("Failed to get rating: {:?}", e);
             HttpResponse::InternalServerError().finish()
