@@ -104,7 +104,11 @@ impl ElasticsearchClient {
                 },
                 "mappings": {
                     "properties": {
-                        "id": { "type": "integer" },
+                        "id": { 
+                            "type": "integer",
+                            "index": false,
+                            "doc_values": false
+                        },
                         "title": {
                             "type": "text",
                             "analyzer": "russian_analyzer",
@@ -118,6 +122,16 @@ impl ElasticsearchClient {
                                     "analyzer": "ngram_analyzer"
                                 }
                             }
+                        },
+                        "cover": {
+                            "type": "keyword",
+                            "index": false,
+                            "doc_values": false
+                        },
+                        "status": {
+                            "type": "integer",
+                            "index": false,
+                            "doc_values": false
                         }
                     }
                 }
@@ -190,7 +204,11 @@ impl ElasticsearchClient {
                 },
                 "mappings": {
                     "properties": {
-                        "id": { "type": "integer" },
+                        "id": { 
+                            "type": "integer",
+                            "index": false,
+                            "doc_values": false
+                        },
                         "name": {
                             "type": "text",
                             "analyzer": "name_analyzer",
@@ -205,7 +223,11 @@ impl ElasticsearchClient {
                                 }
                             }
                         },
-                        "cover": { "type": "text" }
+                        "cover": {
+                            "type": "keyword",
+                            "index": false,
+                            "doc_values": false
+                        },
                     }
                 }
             }))
