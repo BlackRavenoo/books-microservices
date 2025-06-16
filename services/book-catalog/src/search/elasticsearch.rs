@@ -257,7 +257,7 @@ impl ElasticsearchClient {
                         "fields": ["title", "title.ngram"]
                     }
                 },
-                "_source": ["id", "title", "cover"]
+                "_source": ["id", "title", "cover", "status"]
             }))
             .send()
             .await?;

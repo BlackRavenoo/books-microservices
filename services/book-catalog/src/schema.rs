@@ -1,7 +1,7 @@
 use actix_multipart::form::{json::Json, tempfile::TempFile, MultipartForm};
 use bincode::{Decode, Encode};
 use sea_orm::{prelude::DateTimeWithTimeZone, DerivePartialModel, FromQueryResult};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
 use crate::entity::{book::{self, BookStatus}, tag, genre, chapter};
 
@@ -202,6 +202,33 @@ pub struct BookSchema {
     #[sea_orm(from_col = "cover")]
     #[serde(rename(deserialize = "cover"))]
     pub thumbnail: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "deserialize_status")]
+    pub status: Option<BookStatus>,
+}
+
+fn deserialize_status<'de, D>(deserializer: D) -> Result<Option<BookStatus>, D::Error>
+where
+    D: Deserializer<'de>,
+{   
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+
+    match value {
+        Some(v) => {
+            if let Some(status_int) = v.as_i64() {
+                match status_int {
+                    0 => Ok(Some(BookStatus::Ongoing)),
+                    1 => Ok(Some(BookStatus::Completed)),
+                    2 => Ok(Some(BookStatus::Hiatus)),
+                    3 => Ok(Some(BookStatus::Cancelled)),
+                    _ => Err(D::Error::custom(format!("Invalid BookStatus value: {}", status_int))),
+                }
+            } else {
+                Ok(None)
+            }
+        },
+        None => Ok(None),
+    }
 }
 
 #[derive(Deserialize, Serialize)]
