@@ -12,7 +12,7 @@ export interface BooksListPage {
 }
   
 export interface BookSearchResult extends BookPreview {
-    status: string;
+    status: BookStatus;
 }
 
 export interface BookStatus {

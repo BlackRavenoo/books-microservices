@@ -233,7 +233,7 @@
                                         <img src={result.thumbnail} alt={result.title} class="result-cover" />
                                         <div class="result-info">
                                             <div class="result-title">{result.title}</div>
-                                            <div class="result-status">{result.status}</div>
+                                            <div class="result-status">{result.status.name}</div>
                                         </div>
                                     </a>
                                 {/each}
