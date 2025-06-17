@@ -126,7 +126,9 @@ pub struct BookSchema {
     pub title: String,
     pub thumbnail: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub avg_rating: Option<f32>
+    pub avg_rating: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<BookStatus>
 }
 
 #[derive(Serialize, Deserialize, Clone)]
