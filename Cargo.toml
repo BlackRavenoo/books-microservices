@@ -76,3 +76,4 @@ bincode = "2.0.1"
 
 metrics = "0.24.2"
 metrics-exporter-prometheus = "0.17.0"
+pin-project-lite = "0.2.16"

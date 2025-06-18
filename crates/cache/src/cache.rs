@@ -18,6 +18,7 @@ pub enum CacheError {
     Redis(#[from] RedisError)
 }
 
+#[derive(Clone)]
 pub struct HybridCache<K, V, S> {
     prefix: String,
     local_cache: Cache<K, (Expiration, V)>,

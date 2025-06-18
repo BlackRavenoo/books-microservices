@@ -6,6 +6,7 @@ use crate::cache::CacheError;
 
 use super::CacheSerializer;
 
+#[derive(Clone)]
 pub struct BincodeSerializer<V> {
     _phantom: PhantomData<V>,
 }
