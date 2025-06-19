@@ -803,12 +803,12 @@ dependencies = [
 
 [[package]]
 name = "bb8-redis"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7eea5c48080df5cd6c10bc7fec5a160a7d18dc5cf073ab42b49375aa4c748a6"
+checksum = "5143936af5e1eea1a881e3e3d21b6777da6315e5e307bc3d0c2301c44fa37da9"
 dependencies = [
  "bb8",
- "redis 0.31.0",
+ "redis 0.32.0",
 ]
 
 [[package]]
@@ -1073,11 +1073,14 @@ dependencies = [
 name = "cache"
 version = "0.1.0"
 dependencies = [
+ "actix-web",
  "bb8-redis",
  "bincode",
+ "futures-util",
  "metrics",
  "metrics-exporter-prometheus",
  "moka",
+ "pin-project-lite",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -2892,9 +2895,9 @@ dependencies = [
 
 [[package]]
 name = "metrics-exporter-prometheus"
-version = "0.17.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df88858cd28baaaf2cfc894e37789ed4184be0e1351157aec7bf3c2266c793fd"
+checksum = "989903b4c7abfa6827a8d1128ef42faf83f8969d429797c5431f236f2cae8b8b"
 dependencies = [
  "base64 0.22.1",
  "http-body-util",
@@ -3743,6 +3746,9 @@ name = "ratings-service"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "bb8-redis",
+ "bincode",
+ "cache",
  "config",
  "secrecy",
  "serde",
@@ -3857,9 +3863,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bc1ea653e0b2e097db3ebb5b7f678be339620b8041f66b30a308c1d45d36a7f"
+checksum = "bd673deb3d184140109c1e27b043c2354cb79399c3ef304c365fc628092ed773"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -3946,9 +3952,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.19"
+version = "0.12.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f8e5513d63f2e5b386eb5106dc67eaf3f84e95258e210489136b8b92ad6119"
+checksum = "eabf4c97d9130e2bf606614eb937e86edac8292eaa6f422f995d7e8de1eb1813"
 dependencies = [
  "async-compression",
  "base64 0.22.1",
@@ -3964,12 +3970,10 @@ dependencies = [
  "hyper-rustls",
  "hyper-tls 0.6.0",
  "hyper-util",
- "ipnet",
  "js-sys",
  "log",
  "mime",
  "native-tls",
- "once_cell",
  "percent-encoding",
  "pin-project-lite",
  "rustls-pki-types",

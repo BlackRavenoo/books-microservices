@@ -16,3 +16,6 @@ config.workspace = true
 tracing.workspace = true
 
 telemetry.workspace = true
+cache.workspace = true
+bb8-redis.workspace = true
+bincode.workspace = true
