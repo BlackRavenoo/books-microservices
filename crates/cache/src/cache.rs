@@ -1,10 +1,9 @@
-use std::{fmt::Display, hash::Hash};
+use std::{fmt::Display, hash::Hash, time::Instant};
 
 use bb8_redis::{bb8::{Pool, PooledConnection, RunError}, redis::{AsyncCommands, FromRedisValue, RedisError, ToRedisArgs}, RedisConnectionManager};
-use metrics::describe_counter;
+use metrics::{describe_counter, describe_histogram, histogram, counter};
 use moka::future::{Cache, CacheBuilder};
 use thiserror::Error;
-use metrics::counter;
 
 use crate::{expiry::{CacheExpiry, Expiration}, serializer::CacheSerializer};
 
@@ -44,6 +43,7 @@ where
 
         describe_counter!("cache.requests.total", "Total cache requests");
         describe_counter!("cache.hits.total", "Cache hits");
+        describe_histogram!("cache.operation.duration", "Cache operation duration in seconds");
         
         Self {
             prefix,
@@ -58,10 +58,13 @@ where
     }
 
     pub async fn get(&self, key: &K, expiry: Expiration) -> Result<Option<V>, CacheError> {
+        let start_time = Instant::now();
+        
         counter!("cache.requests.total", "layer" => "l1").increment(1);
 
         if let Some((_, v)) = self.local_cache.get(key).await {
             counter!("cache.hits.total", "layer" => "l1").increment(1);
+            histogram!("cache.operation.duration", "operation" => "get", "layer" => "l1").record(start_time.elapsed().as_secs_f64());
             return Ok(Some(v))
         }
 
@@ -73,6 +76,8 @@ where
             .get::<String, Option<Vec<u8>>>(self.format_key(key))
             .await;
 
+        let duration = start_time.elapsed().as_secs_f64();
+
         match result {
             Ok(Some(value)) => {
                 counter!("cache.hits.total", "layer" => "l2").increment(1);
@@ -80,6 +85,7 @@ where
                 match result {
                     Ok(value) => {
                         self.local_cache.insert(key.clone(), (expiry, value.clone())).await;
+                        histogram!("cache.operation.duration", "operation" => "get", "layer" => "l2").record(duration);
                         Ok(Some(value))
                     }
                     Err(e) => {
@@ -98,23 +104,31 @@ where
     }
 
     pub async fn set(&self, key: K, value: V, expiry: Expiration) -> Result<(), CacheError> {
+        let start_time = Instant::now();
+
         self.local_cache.insert(key.clone(), (expiry, value.clone())).await;
         
         let mut con = self.get_redis_connection().await?;
 
         let encoded = self.serializer.serialize(&value)?;
         con.set_ex::<_, _, ()>(self.format_key(&key), encoded, expiry.get_seconds()).await?;
+        
+        histogram!("cache.operation.duration", "operation" => "set").record(start_time.elapsed().as_secs_f64());
 
         Ok(())
     }
 
     pub async fn invalidate(&self, key: K) -> Result<(), CacheError> {
+        let start_time = Instant::now();
+
         self.local_cache
             .invalidate(&key)
             .await;
 
         let mut con = self.get_redis_connection().await?;
         con.del::<_, ()>(self.format_key(&key)).await?;
+
+        histogram!("cache.operation.duration", "operation" => "invalidate").record(start_time.elapsed().as_secs_f64());
 
         Ok(())
     }
