@@ -293,7 +293,9 @@ impl MessageBody for CacheableBody {
 
         match this.body.poll_next(cx) {
             Poll::Ready(Some(Ok(chunk))) => {
-                this.body_buffer.extend_from_slice(&chunk);
+                if this.body_buffer.len() < *this.max_size {
+                    this.body_buffer.extend_from_slice(&chunk);
+                }
                 Poll::Ready(Some(Ok(chunk)))
             }
             Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
@@ -370,7 +372,9 @@ where
                 };
             }
 
-            req.set_payload(actix_web::dev::Payload::from(body.freeze()));
+            if config.requires_body {
+                req.set_payload(actix_web::dev::Payload::from(body.freeze()));
+            }
 
             let fut = CacheResponseFuture::<S, B> {
                 fut: service.call(req),
