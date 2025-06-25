@@ -1,6 +1,6 @@
 use std::{future::{ready, Future, Ready}, marker::PhantomData, pin::Pin, rc::Rc, sync::Arc, task::{Context, Poll}};
 
-use actix_web::{body::{BodySize, BoxBody, EitherBody, MessageBody}, dev::{forward_ready, Response, Service, ServiceRequest, ServiceResponse, Transform}, http::{header::HeaderMap, StatusCode}, web::{Bytes, BytesMut}, Error, HttpMessage};
+use actix_web::{body::{BodySize, BoxBody, EitherBody, MessageBody}, dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, http::{header::HeaderMap, StatusCode}, web::{Bytes, BytesMut}, Error, HttpMessage};
 use bincode::{Decode, Encode};
 use futures_util::{future::LocalBoxFuture, StreamExt};
 use pin_project_lite::pin_project;
@@ -336,8 +336,6 @@ where
                 BytesMut::new()
             };
 
-            
-
             let ctx = RequestContext {
                 method: req.method().as_str(),
                 path: req.path(),
@@ -352,7 +350,7 @@ where
             if should_cache {
                 match cache.get(&cache_key, config.ttl).await {
                     Ok(Some(entry)) => {
-                        let mut res = Response::build(
+                        let mut res = actix_web::HttpResponse::build(
                             StatusCode::from_u16(entry.status).unwrap_or(StatusCode::OK)
                         );
 
@@ -360,7 +358,7 @@ where
                             res.insert_header((header, value));
                         }
 
-                        res.body(entry.body);
+                        let res = res.body(entry.body);
 
                         return Ok(
                             req.into_response(res)
