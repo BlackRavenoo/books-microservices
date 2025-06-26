@@ -1,7 +1,10 @@
 use api_gateway::{auth::jwt::JwtValidator, client::ServiceClient};
 use api_gateway::config::get_config;
+use bb8_redis::bb8::Pool;
+use bb8_redis::RedisConnectionManager;
 use telemetry::{get_subscriber, init_subscriber};
 use std::net::TcpListener;
+use std::time::Duration;
 
 use api_gateway::startup::run;
 
@@ -20,5 +23,13 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(address)?;
 
-    run(listener, client, jwt_validator)?.await
+    let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
+        .expect("Failed to create Redis manager");
+    let redis_pool = Pool::builder()
+            .connection_timeout(Duration::from_millis(100))
+            .build(redis_manager)
+            .await
+            .expect("Failed to build Redis pool");
+
+    run(listener, client, jwt_validator, redis_pool)?.await
 }

@@ -5,7 +5,8 @@ use serde_aux::field_attributes::deserialize_number_from_string;
 pub struct Settings {
     pub application: ApplicationSettings,
     pub services: ServicesSettings,
-    pub auth: AuthSettings
+    pub auth: AuthSettings,
+    pub redis: RedisSettings,
 }
 
 #[derive(Deserialize, Debug)]
@@ -29,6 +30,11 @@ pub struct ServiceSettings {
 
 #[derive(Deserialize, Debug)]
 pub struct AuthSettings {
+    pub url: String
+}
+
+#[derive(Deserialize, Debug)]
+pub struct RedisSettings {
     pub url: String
 }
 
