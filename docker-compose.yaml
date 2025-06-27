@@ -231,6 +231,7 @@ services:
     environment:
       - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
       - APP_SERVICES__RATINGS__URL=http://ratings-service:5000
+      - APP_REDIS__URL=redis://redis:6379
 
   auth-service:
     build:

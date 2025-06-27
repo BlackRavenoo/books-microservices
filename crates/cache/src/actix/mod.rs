@@ -298,9 +298,7 @@ impl MessageBody for CacheableBody {
                 }
                 Poll::Ready(Some(Ok(chunk)))
             }
-            Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(e))),
-            Poll::Ready(None) => Poll::Ready(None),
-            Poll::Pending => Poll::Pending,
+            other => other,
         }
     }
 }
