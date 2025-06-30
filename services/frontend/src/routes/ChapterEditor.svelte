@@ -4,6 +4,8 @@
     import StarterKit from '@tiptap/starter-kit';
     import Placeholder from '@tiptap/extension-placeholder';
     import { createChapter, updateChapter, fetchChapter, fetchBookChapters } from '../api';
+    import { DraftManager } from '../draftManager';
+    import { type SaveStatus, type ChapterDraft } from '../types';
     import { link } from 'svelte-routing';
     
     export let bookId: string;
@@ -17,6 +19,16 @@
     let isLoading = false;
     let error: string | null = null;
     let isEditMode = index !== null;
+
+    let draftManager: DraftManager;
+    let saveStatus: SaveStatus = 'saved';
+    let timeUpdateInterval: number;
+    let displayTime = '';
+
+    $: if (chapterName && draftManager) {
+        draftManager.markAsUnsaved();
+        draftManager.saveDraft(chapterName, editor?.getJSON());
+    }
     
     onMount(async () => {
         editor = new Editor({
@@ -38,6 +50,14 @@
             },
             onTransaction: () => {
                 editor = editor;
+                if (draftManager) {
+                    draftManager.markAsUnsaved();
+                }
+            },
+            onBlur: () => {
+                if (draftManager) {
+                    draftManager.saveDraft(chapterName, editor.getJSON());
+                }
             }
         });
         
@@ -47,12 +67,33 @@
             await loadChapter(parseInt(index));
         } else {
             chapterIndexNumber = chapters.length > 0 ? Math.max(...chapters.map(c => c.index)) + 1 : 1;
+
+            draftManager = new DraftManager(
+                bookId,
+                chapterIndexNumber,
+                handleStatusChange,
+                handleDraftLoad
+            );
+
+            await draftManager.loadDraft();
+
+            timeUpdateInterval = setInterval(() => {
+                displayTime = getLastSavedText();
+            }, 30000);
         }
+
     });
     
     onDestroy(() => {
         if (editor) {
             editor.destroy();
+        }
+        if (draftManager) {
+            draftManager.destroy();
+        }
+
+        if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
         }
     });
     
@@ -107,6 +148,10 @@
                     index: chapterIndexNumber
                 });
             }
+
+            if (draftManager) {
+                draftManager.clearDraft();
+            }
             
             window.location.href = `/book/${bookId}/chapters`;
             
@@ -118,7 +163,6 @@
         }
     }
     
-    // Функции форматирования
     function toggleBold() {
         editor.chain().focus().toggleBold().run();
     }
@@ -134,11 +178,45 @@
     function setParagraph() {
         editor.chain().focus().setParagraph().run();
     }
+
+    function handleStatusChange(status: SaveStatus) {
+        saveStatus = status;
+    }
+
+    function handleDraftLoad(draft: ChapterDraft) {
+        chapterName = draft.name;
+        if (editor && draft.content) {
+            editor.commands.setContent(draft.content);
+        }
+    }
+
+    function getLastSavedText(): string {
+        return draftManager?.getLastSavedText() || '';
+    }
 </script>
 
 <div class="editor-container">
     <div class="editor-header">
-        <h1>{isEditMode ? 'Редактировать главу' : 'Создать главу'}</h1>
+        <div class="header-top">
+            <h1>{isEditMode ? 'Редактировать главу' : 'Создать главу'}</h1>
+            
+            <div class="save-status">
+                {#if saveStatus === 'saving'}
+                    <span class="status saving">💾 Сохранение...</span>
+                {:else if saveStatus === 'saved'}
+                    <span class="status saved">
+                        ✅ Сохранено
+                        {#if displayTime}
+                            <small>({displayTime})</small>
+                        {/if}
+                    </span>
+                {:else if saveStatus === 'unsaved'}
+                    <span class="status unsaved">⚠️ Есть несохранённые изменения</span>
+                {:else if saveStatus === 'error'}
+                    <span class="status error">❌ Ошибка сохранения</span>
+                {/if}
+            </div>
+        </div>
         
         {#if error}
             <div class="error">{error}</div>
@@ -395,5 +473,49 @@
     
     .cancel-btn:hover {
         background: var(--border-color);
+    }
+
+    .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .save-status {
+        font-size: 0.9rem;
+    }
+
+    .status {
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .status.saved {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status.saving {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status.unsaved {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status.error {
+        background: #f5c6cb;
+        color: #721c24;
+    }
+
+    .status small {
+        opacity: 0.8;
+        font-size: 0.8em;
     }
 </style>

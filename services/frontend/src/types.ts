@@ -106,3 +106,13 @@ export interface ChapterFullSchema {
     book_id: number,
     created_at: string,
 }
+
+export interface ChapterDraft {
+    book_id: string;
+    index: number;
+    name: string;
+    content: any;
+    last_saved: string;
+}
+
+export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
