@@ -7,3 +7,7 @@ scrape_configs:
     static_configs:
       - targets: ['book-catalog:5000']
     metrics_path: '/metrics'
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:5000']
+    metrics_path: '/metrics'
