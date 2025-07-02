@@ -11,6 +11,7 @@ pub mod author;
 pub mod entity;
 pub mod chapter;
 pub mod ratings;
+pub mod metrics;
 
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg
