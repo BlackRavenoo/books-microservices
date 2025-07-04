@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
 
     let listener = TcpListener::bind(address)?;
 
-    let redis_manager = RedisConnectionManager::new(config.redis.url.clone())
+    let redis_manager = RedisConnectionManager::new(config.cache.url.clone())
         .expect("Failed to create Redis manager");
     let redis_pool = Pool::builder()
             .connection_timeout(Duration::from_millis(100))

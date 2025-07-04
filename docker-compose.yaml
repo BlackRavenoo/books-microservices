@@ -97,10 +97,14 @@ services:
 
   redis:
     image: redis:alpine
-    ports:
-      - "6379:6379"
+    command: redis-server --save 900 1 --save 300 10 --appendonly yes
     volumes:
       - redis_data:/data
+    restart: unless-stopped
+
+  cache:
+    image: redis:alpine
+    command: redis-server --save ""
     restart: unless-stopped
 
   nginx:
@@ -212,7 +216,7 @@ services:
       - APP_S3__REGION=ru-central-1
       - APP_S3__ENDPOINT=https://s3.cloud.ru
       - APP_S3__NAME=${S3_BUCKET_NAME}
-      - APP_REDIS__URL=redis://redis:6379
+      - APP_CACHE__URL=redis://cache:6379
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/health"]
       interval: 30s
@@ -231,7 +235,7 @@ services:
     environment:
       - APP_SERVICES__BOOK_CATALOG__URL=http://book-catalog:5000
       - APP_SERVICES__RATINGS__URL=http://ratings-service:5000
-      - APP_REDIS__URL=redis://redis:6379
+      - APP_CACHE__URL=redis://cache:6379
 
   auth-service:
     build:

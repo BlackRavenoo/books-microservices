@@ -13,5 +13,5 @@ services:
 auth:
   url: "http://auth-service:5000"
 
-redis:
+cache:
   url: "redis://localhost:6379"

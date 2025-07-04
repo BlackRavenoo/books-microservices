@@ -8,7 +8,7 @@ pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
     pub search: SearchSettings,
-    pub redis: RedisSettings,
+    pub cache: CacheSettings,
     pub s3: S3Settings
 }
 
@@ -36,7 +36,7 @@ pub struct DatabaseSettings {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct RedisSettings {
+pub struct CacheSettings {
     pub url: String
 }
 
