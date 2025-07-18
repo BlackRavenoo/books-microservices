@@ -37,6 +37,10 @@ impl TokenStore {
         format!("refresh_token:{}", token)
     }
 
+    fn get_access_key(&self, token: &str) -> String {
+        format!("access:{}", token)
+    }
+
     pub async fn get_refresh_token(&self, token: &str) -> anyhow::Result<Option<RefreshToken>> {
         let mut conn = self.redis_pool.get().await.context("Failed to get Redis connection")?;
         
@@ -91,7 +95,7 @@ impl TokenStore {
         let mut conn = self.redis_pool.get().await.context("Failed to get Redis connection")?;
         
         conn.set_ex::<_, _, ()>(
-            self.get_key(token), 
+            self.get_access_key(token), 
             "1", 
             self.access_token_ttl
         )
@@ -105,7 +109,7 @@ impl TokenStore {
         let mut conn = self.redis_pool.get().await.context("Failed to get Redis connection")?;
         
         let exists: bool = conn
-            .exists(self.get_key(token))
+            .exists(self.get_access_key(token))
             .await
             .context("Failed to check token revocation status")?;
         
