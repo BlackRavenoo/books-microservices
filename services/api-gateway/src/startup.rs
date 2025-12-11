@@ -35,8 +35,8 @@ pub fn run(
             });
         
         App::new()
-            .wrap(TracingLogger::default())
             .wrap(cache_middleware)
+            .wrap(TracingLogger::default())
             .app_data(client.clone())
             .app_data(validator.clone())
             .app_data(handle.clone())
