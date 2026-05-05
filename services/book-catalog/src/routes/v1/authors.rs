@@ -92,8 +92,14 @@ pub async fn update_author(
             return HttpResponse::BadRequest().body("Could not read uploaded file");
         }
 
-        let image = match process_image(&buf, 375) {
-            Ok(image) => image,
+        let result = actix_web::web::block(move || process_image(&buf, 375)).await;
+
+        let image = match result {
+            Ok(Ok(image)) => image,
+            Ok(Err(e)) => {
+                tracing::error!("Failed to process image: {:?}", e);
+                return HttpResponse::BadRequest().body("Could not process uploaded image")
+            }
             Err(e) => {
                 tracing::error!("Failed to process image: {:?}", e);
                 return HttpResponse::BadRequest().body("Could not process uploaded image")
@@ -140,8 +146,14 @@ pub async fn create_author(
                 return HttpResponse::BadRequest().body("Could not read uploaded file");
             }
         
-            let image = match process_image(&buf, 375) {
-                Ok(image) => image,
+            let result = actix_web::web::block(move || process_image(&buf, 375)).await;
+
+            let image = match result {
+                Ok(Ok(image)) => image,
+                Ok(Err(e)) => {
+                    tracing::error!("Failed to process image: {:?}", e);
+                    return HttpResponse::BadRequest().body("Could not process uploaded image")
+                }
                 Err(e) => {
                     tracing::error!("Failed to process image: {:?}", e);
                     return HttpResponse::BadRequest().body("Could not process uploaded image")
