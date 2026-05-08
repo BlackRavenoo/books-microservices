@@ -12,7 +12,7 @@ actix-web = ["dep:actix-web", "dep:futures-util", "dep:pin-project-lite"]
 [dependencies]
 moka.workspace = true
 bb8-redis.workspace = true
-bincode.workspace = true
+bitcode.workspace = true
 serde.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
