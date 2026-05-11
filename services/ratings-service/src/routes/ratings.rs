@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
-use cache::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
+use cache::{cache::HybridCache, expiry::Expiration, serializer::bitcode::BitcodeSerializer};
 use sqlx::PgPool;
 
 use crate::schema::{BookRatingSchema, BulkGetSchema, GetSchema, RateSchema, RatingSchema};
@@ -8,7 +8,7 @@ pub async fn get_rating(
     pool: web::Data<PgPool>,
     path: web::Path<i32>,
     json: web::Json<GetSchema>,
-    cache: web::Data<HybridCache::<String, RatingSchema, BincodeSerializer<RatingSchema>>>
+    cache: web::Data<HybridCache::<String, RatingSchema, BitcodeSerializer<RatingSchema>>>
 ) -> impl Responder {
     let path = path.into_inner();
     let key = format!("{}_{}", path, json.user_id.unwrap_or(-1));

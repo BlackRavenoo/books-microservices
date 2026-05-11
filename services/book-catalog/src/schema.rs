@@ -1,5 +1,4 @@
 use actix_multipart::form::{json::Json, tempfile::TempFile, MultipartForm};
-use bincode::{Decode, Encode};
 use sea_orm::{prelude::DateTimeWithTimeZone, DerivePartialModel, FromQueryResult};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
@@ -147,14 +146,14 @@ pub struct BulkGetSchema {
 
 // Output schema
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[derive(Serialize, Deserialize, Clone, FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "tag::Entity")]
 pub struct Tag {
     pub id: i16,
     pub name: String
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[derive(Serialize, Deserialize, Clone, FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "genre::Entity")]
 pub struct Genre {
     pub id: i16,
@@ -167,13 +166,13 @@ pub struct BookStatusWithName {
     pub name: &'static str,
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Author {
     pub id: i32,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct BookFullSchema {
     pub id: i32,
     pub title: String,
@@ -194,7 +193,7 @@ pub struct PaginationSchema<T> {
     pub items: Vec<T>
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode, FromQueryResult, DerivePartialModel)]
+#[derive(Serialize, Deserialize, Clone, FromQueryResult, DerivePartialModel)]
 #[sea_orm(entity = "book::Entity")]
 pub struct BookSchema {
     pub id: i32,
@@ -238,7 +237,7 @@ pub struct AuthorSchema {
     pub cover: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ConstantsSchema {
     pub tags: Vec<Tag>,
     pub genres: Vec<Genre>,

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use bincode::{Decode, Encode};
 
 #[derive(Deserialize)]
 pub struct BulkGetSchema {
@@ -24,7 +23,7 @@ pub struct BookRatingSchema {
     pub avg_rating: f32
 }
 
-#[derive(Serialize, Decode, Encode, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RatingSchema {
     pub avg: f32,
     pub user: Option<i16>

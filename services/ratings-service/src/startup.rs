@@ -2,7 +2,7 @@ use std::net::TcpListener;
 
 use actix_web::{dev::Server, web::{self, Data}, App, HttpResponse, HttpServer};
 use bb8_redis::{bb8::Pool, RedisConnectionManager};
-use cache::{cache::HybridCache, serializer::bincode::BincodeSerializer};
+use cache::{cache::HybridCache, serializer::bitcode::BitcodeSerializer};
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 
@@ -15,11 +15,11 @@ pub fn run(
 ) -> Result<Server, std::io::Error> {
     let pool = web::Data::new(pool);
 
-    let cache = Data::new(HybridCache::<String, RatingSchema, BincodeSerializer<_>>::new(
+    let cache = Data::new(HybridCache::<String, RatingSchema, BitcodeSerializer<_>>::new(
         "ratings".to_string(),
         redis_pool,
         10000,
-        BincodeSerializer::default()
+        BitcodeSerializer::default()
     ));
 
     let server = HttpServer::new(move || {

@@ -1,11 +1,10 @@
 use async_trait::async_trait;
-use bincode::{Decode, Encode};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::utils::validators::is_valid_url;
 
-#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum, Decode, Encode)]
+#[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(rs_type = "i16", db_type = "TinyInteger")]
 pub enum BookStatus {
     Ongoing = 0,

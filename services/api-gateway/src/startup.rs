@@ -2,7 +2,7 @@ use std::net::TcpListener;
 
 use actix_web::{dev::Server, web::{self, Data}, App, HttpResponse, HttpServer};
 use bb8_redis::{bb8::Pool, RedisConnectionManager};
-use cache::{actix::CacheMiddleware, cache::HybridCache, serializer::bincode::BincodeSerializer};
+use cache::{actix::CacheMiddleware, cache::HybridCache, serializer::bitcode::BitcodeSerializer};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use tracing_actix_web::TracingLogger;
 
@@ -17,7 +17,7 @@ pub fn run(
     let client = Data::new(client);
     let validator = Data::new(jwt_validator);
 
-    let cache = HybridCache::new("api-gateway".to_string(), redis_pool, 2000, BincodeSerializer::default());
+    let cache = HybridCache::new("api-gateway".to_string(), redis_pool, 2000, BitcodeSerializer::default());
 
     let builder = PrometheusBuilder::new();
 

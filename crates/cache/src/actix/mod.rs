@@ -1,11 +1,11 @@
 use std::{future::{ready, Future, Ready}, marker::PhantomData, pin::Pin, rc::Rc, sync::Arc, task::{Context, Poll}};
 
 use actix_web::{body::{BodySize, BoxBody, EitherBody, MessageBody}, dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform}, http::{header::HeaderMap, StatusCode}, web::{Bytes, BytesMut}, Error, HttpMessage};
-use bincode::{Decode, Encode};
 use futures_util::{future::LocalBoxFuture, StreamExt};
 use pin_project_lite::pin_project;
+use serde::{Deserialize, Serialize};
 
-use crate::{cache::HybridCache, expiry::Expiration, serializer::bincode::BincodeSerializer};
+use crate::{cache::HybridCache, expiry::Expiration, serializer::bitcode::BitcodeSerializer};
 
 pub struct RequestContext<'a> {
     pub method: &'a str,
@@ -43,7 +43,7 @@ type CacheConditionFn = Arc<dyn Fn(&RequestContext) -> bool + Send + Sync>;
 
 type KeyGenerator = Arc<dyn Fn(&RequestContext) -> String + Send + Sync>;
 
-type Cache = HybridCache<String, CacheEntry, BincodeSerializer<CacheEntry>>;
+type Cache = HybridCache<String, CacheEntry, BitcodeSerializer<CacheEntry>>;
 
 pub struct CacheMiddleware {
     cache: Cache,
@@ -133,7 +133,7 @@ pub struct CacheMiddlewareService<S> {
     config: CacheConfig,
 }
 
-#[derive(Decode, Encode, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CacheEntry {
     pub status: u16,
     pub headers: Vec<(String, String)>,

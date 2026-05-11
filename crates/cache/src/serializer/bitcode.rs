@@ -1,34 +1,30 @@
 use std::marker::PhantomData;
-
-use bincode::{Decode, Encode};
-
+use serde::{Serialize, Deserialize};
 use crate::cache::CacheError;
-
 use super::CacheSerializer;
 
 #[derive(Clone)]
-pub struct BincodeSerializer<V> {
+pub struct BitcodeSerializer<V> {
     _phantom: PhantomData<V>,
 }
 
-impl<V> Default for BincodeSerializer<V> {
+impl<V> Default for BitcodeSerializer<V> {
     fn default() -> Self {
         Self { _phantom: PhantomData }
     }
 }
 
-impl<V> CacheSerializer<V> for BincodeSerializer<V>
+impl<V> CacheSerializer<V> for BitcodeSerializer<V>
 where
-    V: Encode + Decode<()>,
+    V: Serialize + for<'de> Deserialize<'de>,
 {
     fn serialize(&self, value: &V) -> Result<Vec<u8>, CacheError> {
-        bincode::encode_to_vec(value, bincode::config::standard())
+        bitcode::serialize(value)
             .map_err(|e| CacheError::Serialization(e.to_string()))
     }
 
     fn deserialize(&self, data: &[u8]) -> Result<V, CacheError> {
-        let (value, _) = bincode::decode_from_slice(data, bincode::config::standard())
-            .map_err(|e| CacheError::Serialization(e.to_string()))?;
-        Ok(value)
+        bitcode::deserialize(data)
+            .map_err(|e| CacheError::Serialization(e.to_string()))
     }
 }

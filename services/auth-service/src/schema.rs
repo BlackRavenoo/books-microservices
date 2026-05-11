@@ -1,4 +1,3 @@
-use bincode::{Decode, Encode};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
@@ -102,7 +101,7 @@ pub struct TokenResponse {
     pub expires_in: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Decode, Encode)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RefreshToken {
     pub user_id: i32,
     pub fingerprint: String
