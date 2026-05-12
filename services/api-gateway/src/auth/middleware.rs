@@ -186,10 +186,6 @@ where
 }
 
 impl JwtMiddleware {
-    pub fn default() -> Self {
-        Self::new(JwtConfig::default())
-    }
-
     pub fn admin_only() -> Self {
         Self::new(JwtConfig::new().require_admin())
     }
